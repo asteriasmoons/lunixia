@@ -1,0 +1,302 @@
+//
+//  JournalBlockPreviewPage.swift
+//  Lunixia
+//
+
+import SwiftUI
+import SwiftData
+import UIKit
+
+struct JournalBlockPreviewPage: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    let entry: JournalEntry
+
+    @State private var showDeleteConfirmation = false
+    @State private var showEditorPage = false
+    @State private var isCompletingAction = false
+    @State private var hasPreparedPreview = false
+    @State private var showBackgroundSettingsSheet = false
+    @State private var showInnerPageSettingsSheet = false
+    @State private var showTextColorSheet = false
+    @State private var textColorPickerSelection: Color = .white
+
+    private var previewInnerPageMaxWidth: CGFloat {
+        horizontalSizeClass == .regular ? 720 : 410
+    }
+
+    var body: some View {
+        ZStack {
+            LunixiaBackground()
+            JournalEntryBackground(entry: entry)
+
+            ScrollView {
+                JournalPagedContentView(entry: entry, onMentionTapped: handleMentionTap)
+                    .frame(maxWidth: previewInnerPageMaxWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 32)
+            }
+        }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showBackgroundSettingsSheet = true
+                    } label: {
+                        Label("Background", systemImage: "photo")
+                    }
+                    Button {
+                        showInnerPageSettingsSheet = true
+                    } label: {
+                        Label("Inner Page", systemImage: "rectangle.inset.filled")
+                    }
+                    Button {
+                        let hex = entry.textColorHex.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !hex.isEmpty,
+                           let r = UInt8(hex.prefix(2), radix: 16),
+                           let g = UInt8(hex.dropFirst(2).prefix(2), radix: 16),
+                           let b = UInt8(hex.dropFirst(4).prefix(2), radix: 16) {
+                            textColorPickerSelection = Color(
+                                red: Double(r) / 255,
+                                green: Double(g) / 255,
+                                blue: Double(b) / 255
+                            )
+                        } else {
+                            textColorPickerSelection = .white
+                        }
+                        showTextColorSheet = true
+                    } label: {
+                        Label("Text Color", systemImage: "textformat")
+                    }
+                } label: {
+                    Image(systemName: "paintbrush.fill")
+                        .foregroundStyle(.white)
+                }
+                .disabled(isCompletingAction || entry.deletedAt != nil || entry.book == nil)
+                .opacity((isCompletingAction || entry.deletedAt != nil || entry.book == nil) ? 0.5 : 1)
+
+                Button {
+                    guard !isCompletingAction, entry.deletedAt == nil, entry.book != nil else { return }
+                    showEditorPage = true
+                } label: {
+                    Text("Edit").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                }
+                .disabled(isCompletingAction || entry.deletedAt != nil || entry.book == nil)
+                .opacity((isCompletingAction || entry.deletedAt != nil || entry.book == nil) ? 0.5 : 1)
+
+                Button(role: .destructive) {
+                    guard !isCompletingAction, entry.deletedAt == nil else { return }
+                    showDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash").foregroundStyle(.white)
+                }
+                .disabled(isCompletingAction || entry.deletedAt != nil)
+                .opacity((isCompletingAction || entry.deletedAt != nil) ? 0.5 : 1)
+            }
+        }
+        .navigationDestination(isPresented: $showEditorPage) {
+            Group {
+                if let book = entry.book, entry.deletedAt == nil {
+                    JournalBlockEditorPage(book: book, existingEntry: entry)
+                } else {
+                    Color.clear.navigationBarBackButtonHidden(true)
+                }
+            }
+        }
+
+        .sheet(isPresented: $showBackgroundSettingsSheet) {
+            JournalBackgroundSettingsSheet(entry: entry)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .preferredColorScheme(.dark)
+        }
+        .sheet(isPresented: $showInnerPageSettingsSheet) {
+            JournalInnerPageSettingsSheet(entry: entry)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .preferredColorScheme(.dark)
+        }
+        .sheet(isPresented: $showTextColorSheet) {
+            NavigationStack {
+                ZStack {
+                    LunixiaBackground().ignoresSafeArea()
+                    VStack(spacing: 24) {
+                        ColorPicker("Text Color", selection: $textColorPickerSelection, supportsOpacity: false)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(LColors.textPrimary)
+                            .padding(.horizontal, LSpacing.pageHorizontal)
+                        if !entry.textColorHex.isEmpty {
+                            Button {
+                                entry.textColorHex = ""
+                                entry.touch()
+                                showTextColorSheet = false
+                            } label: {
+                                Text("Reset to Default")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(LColors.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 24)
+                }
+                .navigationTitle("Text Color")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Apply") {
+                            let uiColor = UIColor(textColorPickerSelection)
+                            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                            uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+                            entry.textColorHex = String(format: "%02X%02X%02X",
+                                Int(r * 255), Int(g * 255), Int(b * 255))
+                            entry.touch()
+                            showTextColorSheet = false
+                        }
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+            .preferredColorScheme(.dark)
+        }
+        .confirmationDialog("Delete this entry?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete Entry", role: .destructive) { deleteEntry() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove the entry from your journal.")
+        }
+        .task {
+            guard !hasPreparedPreview else { return }
+            hasPreparedPreview = true
+            if entry.book == nil || entry.deletedAt != nil {
+                isCompletingAction = true
+                dismiss()
+                return
+            }
+            entry.ensureStarterBlock()
+            entry.normalizeBlockSortOrders()
+            try? modelContext.save()
+        }
+        .onDisappear { isCompletingAction = false }
+    }
+
+    private func handleMentionTap(_ idString: String) {
+        // Mention navigation is intentionally disabled in Lunixia until book-detail routing is centralized.
+    }
+
+    private func deleteEntry() {
+        guard !isCompletingAction, entry.deletedAt == nil else { return }
+        isCompletingAction = true
+        showDeleteConfirmation = false
+        showEditorPage = false
+        entry.deletedAt = Date()
+        entry.updatedAt = Date()
+        try? modelContext.save()
+        dismiss()
+    }
+}
+
+// MARK: - Unified paged content view
+// Identity (cover + title + tags) + first content page share ONE glass card.
+// Subsequent pages each get their own glass card, matching the editor exactly.
+
+private struct JournalPagedContentView: View {
+    let entry: JournalEntry
+    var onMentionTapped: ((String) -> Void)? = nil
+
+    private var blockPages: [[JournalBlock]] {
+        var pages: [[JournalBlock]] = [[]]
+        var hiddenParentIDs = Set<UUID>()
+        for block in entry.sortedBlocks {
+            if let parentID = block.parentBlockID, hiddenParentIDs.contains(parentID) {
+                if block.isToggleBlock || block.type.isToggleHeading { hiddenParentIDs.insert(block.id) }
+                continue
+            }
+            if (block.isToggleBlock || block.type.isToggleHeading) && !block.isExpanded {
+                hiddenParentIDs.insert(block.id)
+            }
+            if block.type == .divider,
+               (DividerStyle(rawValue: block.languageHint) ?? .line) == .pageBreak {
+                pages.append([])
+            } else {
+                pages[pages.count - 1].append(block)
+            }
+        }
+        return pages
+    }
+
+    private func glassCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        let style = JournalInnerPageStyle(entry: entry)
+
+        return content()
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.clear)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .opacity(style.shouldShowMaterial ? 1 : 0)
+                    )
+                    .overlay {
+                        style.fillView
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(style.borderColor, lineWidth: 1)
+                    )
+            }
+            .shadow(color: style.shadowColor, radius: 12, x: 0, y: 4)
+            .padding(.horizontal, 16)
+    }
+
+    var body: some View {
+        let pages = blockPages
+        VStack(alignment: .leading, spacing: 0) {
+            // First card: identity + first page of content in ONE glass card
+            glassCard {
+                VStack(alignment: .leading, spacing: 0) {
+                    JournalIdentityHeaderView(entry: entry)
+                    if let firstPage = pages.first, !firstPage.isEmpty {
+                        VStack(alignment: .leading, spacing: 14) {
+                            ForEach(firstPage) { block in
+                                JournalBlockDisplayView(entry: entry, singleBlock: block, onMentionTapped: onMentionTapped)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 28)
+                    }
+                }
+            }
+            .padding(.top, 16)
+
+            // Subsequent pages: each get their own glass card
+            if pages.count > 1 {
+                ForEach(Array(pages.dropFirst().enumerated()), id: \.offset) { _, page in
+                    glassCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            ForEach(page) { block in
+                                JournalBlockDisplayView(entry: entry, singleBlock: block, onMentionTapped: onMentionTapped)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 28)
+                    }
+                    .padding(.top, 16)
+                }
+            }
+        }
+    }
+}

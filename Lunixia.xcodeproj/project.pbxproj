@@ -6,8 +6,61 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CFBD97FB2FC3CD13003F1EAC /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFBD97FA2FC3CD13003F1EAC /* StoreKit.framework */; };
+		CFBD99C92FC86C63003F1EAC /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */; };
+		CFBD99D12FC86C63003F1EAC /* LunixiaMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CFBD99E72FC86CB8003F1EAC /* LunixiaReport.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CFBD99CF2FC86C63003F1EAC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CFBD95E42FBE068A003F1EAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CFBD99C62FC86C63003F1EAC;
+			remoteInfo = LunixiaMonitor;
+		};
+		CFBD99E52FC86CB8003F1EAC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CFBD95E42FBE068A003F1EAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CFBD99DA2FC86CB8003F1EAC;
+			remoteInfo = LunixiaReport;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CFBD99D62FC86C63003F1EAC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CFBD99D12FC86C63003F1EAC /* LunixiaMonitor.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99EC2FC86CB8003F1EAC /* Embed ExtensionKit Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				CFBD99E72FC86CB8003F1EAC /* LunixiaReport.appex in Embed ExtensionKit Extensions */,
+			);
+			name = "Embed ExtensionKit Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		CFBD95EC2FBE068A003F1EAC /* Lunixia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lunixia.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFBD97FA2FC3CD13003F1EAC /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LunixiaMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
+		CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = LunixiaReport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -17,6 +70,20 @@
 				Info.plist,
 			);
 			target = CFBD95EB2FBE068A003F1EAC /* Lunixia */;
+		};
+		CFBD99D52FC86C63003F1EAC /* Exceptions for "LunixiaMonitor" folder in "LunixiaMonitor" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CFBD99C62FC86C63003F1EAC /* LunixiaMonitor */;
+		};
+		CFBD99EB2FC86CB8003F1EAC /* Exceptions for "LunixiaReport" folder in "LunixiaReport" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -29,10 +96,42 @@
 			path = Lunixia;
 			sourceTree = "<group>";
 		};
+		CFBD99CA2FC86C63003F1EAC /* LunixiaMonitor */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CFBD99D52FC86C63003F1EAC /* Exceptions for "LunixiaMonitor" folder in "LunixiaMonitor" target */,
+			);
+			path = LunixiaMonitor;
+			sourceTree = "<group>";
+		};
+		CFBD99DC2FC86CB8003F1EAC /* LunixiaReport */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CFBD99EB2FC86CB8003F1EAC /* Exceptions for "LunixiaReport" folder in "LunixiaReport" target */,
+			);
+			path = LunixiaReport;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		CFBD95E92FBE068A003F1EAC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFBD97FB2FC3CD13003F1EAC /* StoreKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99C42FC86C63003F1EAC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFBD99C92FC86C63003F1EAC /* DeviceActivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99D82FC86CB8003F1EAC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -46,6 +145,9 @@
 			isa = PBXGroup;
 			children = (
 				CFBD95EE2FBE068A003F1EAC /* Lunixia */,
+				CFBD99CA2FC86C63003F1EAC /* LunixiaMonitor */,
+				CFBD99DC2FC86CB8003F1EAC /* LunixiaReport */,
+				CFBD97F92FC3CD13003F1EAC /* Frameworks */,
 				CFBD95ED2FBE068A003F1EAC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +156,19 @@
 			isa = PBXGroup;
 			children = (
 				CFBD95EC2FBE068A003F1EAC /* Lunixia.app */,
+				CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */,
+				CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		CFBD97F92FC3CD13003F1EAC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CFBD97FA2FC3CD13003F1EAC /* StoreKit.framework */,
+				CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -68,10 +181,14 @@
 				CFBD95E82FBE068A003F1EAC /* Sources */,
 				CFBD95E92FBE068A003F1EAC /* Frameworks */,
 				CFBD95EA2FBE068A003F1EAC /* Resources */,
+				CFBD99D62FC86C63003F1EAC /* Embed Foundation Extensions */,
+				CFBD99EC2FC86CB8003F1EAC /* Embed ExtensionKit Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CFBD99D02FC86C63003F1EAC /* PBXTargetDependency */,
+				CFBD99E62FC86CB8003F1EAC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CFBD95EE2FBE068A003F1EAC /* Lunixia */,
@@ -82,6 +199,50 @@
 			productName = Lunixia;
 			productReference = CFBD95EC2FBE068A003F1EAC /* Lunixia.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CFBD99C62FC86C63003F1EAC /* LunixiaMonitor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFBD99D22FC86C63003F1EAC /* Build configuration list for PBXNativeTarget "LunixiaMonitor" */;
+			buildPhases = (
+				CFBD99C32FC86C63003F1EAC /* Sources */,
+				CFBD99C42FC86C63003F1EAC /* Frameworks */,
+				CFBD99C52FC86C63003F1EAC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CFBD99CA2FC86C63003F1EAC /* LunixiaMonitor */,
+			);
+			name = LunixiaMonitor;
+			packageProductDependencies = (
+			);
+			productName = LunixiaMonitor;
+			productReference = CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFBD99E82FC86CB8003F1EAC /* Build configuration list for PBXNativeTarget "LunixiaReport" */;
+			buildPhases = (
+				CFBD99D72FC86CB8003F1EAC /* Sources */,
+				CFBD99D82FC86CB8003F1EAC /* Frameworks */,
+				CFBD99D92FC86CB8003F1EAC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CFBD99DC2FC86CB8003F1EAC /* LunixiaReport */,
+			);
+			name = LunixiaReport;
+			packageProductDependencies = (
+			);
+			productName = LunixiaReport;
+			productReference = CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */;
+			productType = "com.apple.product-type.extensionkit-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -94,6 +255,12 @@
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					CFBD95EB2FBE068A003F1EAC = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					CFBD99C62FC86C63003F1EAC = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					CFBD99DA2FC86CB8003F1EAC = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -113,12 +280,28 @@
 			projectRoot = "";
 			targets = (
 				CFBD95EB2FBE068A003F1EAC /* Lunixia */,
+				CFBD99C62FC86C63003F1EAC /* LunixiaMonitor */,
+				CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CFBD95EA2FBE068A003F1EAC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99C52FC86C63003F1EAC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99D92FC86CB8003F1EAC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,7 +318,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CFBD99C32FC86C63003F1EAC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFBD99D72FC86CB8003F1EAC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CFBD99D02FC86C63003F1EAC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CFBD99C62FC86C63003F1EAC /* LunixiaMonitor */;
+			targetProxy = CFBD99CF2FC86C63003F1EAC /* PBXContainerItemProxy */;
+		};
+		CFBD99E62FC86CB8003F1EAC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */;
+			targetProxy = CFBD99E52FC86CB8003F1EAC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CFBD95FB2FBE068C003F1EAC /* Debug */ = {
@@ -143,6 +353,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Lunixia/Lunixia.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -150,6 +361,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Lunixia/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lunixia;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Export and share selected health information with doctors, caregivers, loved ones, or anyone you choose whenever you need it.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -163,12 +376,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -177,6 +394,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Lunixia/Lunixia.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -184,6 +402,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Lunixia/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lunixia;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Export and share selected health information with doctors, caregivers, loved ones, or anyone you choose whenever you need it.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -197,12 +417,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -327,6 +551,122 @@
 			};
 			name = Release;
 		};
+		CFBD99D32FC86C63003F1EAC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LunixiaMonitor/LunixiaMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaMonitor/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaMonitor;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CFBD99D42FC86C63003F1EAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LunixiaMonitor/LunixiaMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaMonitor/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaMonitor;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CFBD99E92FC86CB8003F1EAC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LunixiaReport/LunixiaReport.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaReport/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaReport;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaReport;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CFBD99EA2FC86CB8003F1EAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LunixiaReport/LunixiaReport.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaReport/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaReport;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaReport;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -344,6 +684,24 @@
 			buildConfigurations = (
 				CFBD95FB2FBE068C003F1EAC /* Debug */,
 				CFBD95FC2FBE068C003F1EAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFBD99D22FC86C63003F1EAC /* Build configuration list for PBXNativeTarget "LunixiaMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFBD99D32FC86C63003F1EAC /* Debug */,
+				CFBD99D42FC86C63003F1EAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFBD99E82FC86CB8003F1EAC /* Build configuration list for PBXNativeTarget "LunixiaReport" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFBD99E92FC86CB8003F1EAC /* Debug */,
+				CFBD99EA2FC86CB8003F1EAC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

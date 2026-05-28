@@ -2,9 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Lunixia uses speech recognition to turn your voice into notes</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lunixia uses your microphone for voice transcription</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>LilyScriptOne-Regular.ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Lunixia reads your health data to automatically fill in your mood log check-in metrics.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Lunixia writes your vitals, exercise, and water intake to Apple Health.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lunixia uses your location to fetch current weather conditions for your mood log.</string>
 </dict>
 </plist>
