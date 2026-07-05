@@ -488,42 +488,50 @@ struct JournalBackgroundSettingsSheet: View {
 
 // MARK: - Isolated photo picker
 
-private struct JournalBackgroundImagePickerSheet: View {
-    @Environment(\.dismiss) private var dismiss
+private struct JournalBackgroundImagePickerSheet: UIViewControllerRepresentable {
     let onImagePicked: (Data) -> Void
 
-    @State private var selectedItem: PhotosPickerItem?
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        configuration.preferredAssetRepresentationMode = .current
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                LunixiaBackground().ignoresSafeArea()
-                PhotosPicker(
-                    selection: $selectedItem,
-                    matching: .images,
-                    photoLibrary: .shared()
-                ) {
-                    Text("Choose a Photo")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                }
-            }
-            .navigationTitle("Choose Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(.white)
-                }
-            }
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImagePicked: onImagePicked)
+    }
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let onImagePicked: (Data) -> Void
+
+        init(onImagePicked: @escaping (Data) -> Void) {
+            self.onImagePicked = onImagePicked
         }
-        .task(id: selectedItem) {
-            guard let item = selectedItem else { return }
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                onImagePicked(data)
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+
+            guard let provider = results.first?.itemProvider else { return }
+
+            if provider.canLoadObject(ofClass: UIImage.self) {
+                provider.loadObject(ofClass: UIImage.self) { object, _ in
+                    guard
+                        let image = object as? UIImage,
+                        let data = image.jpegData(compressionQuality: 0.92)
+                    else { return }
+
+                    DispatchQueue.main.async {
+                        self.onImagePicked(data)
+                    }
+                }
             }
-            dismiss()
         }
     }
 }

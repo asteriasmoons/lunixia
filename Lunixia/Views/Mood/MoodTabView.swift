@@ -5,9 +5,11 @@
 
 import SwiftUI
 import SwiftData
+import WidgetKit
 
 struct MoodTabView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var storeManager: LunixiaStoreManager
     @Query(sort: \MoodEntry.timestamp, order: .reverse) private var entries: [MoodEntry]
     @Query private var chatSessions: [MoodChatSession]
@@ -62,19 +64,19 @@ struct MoodTabView: View {
     }
 
     private var streak: Int {
-        guard !entries.isEmpty else { return 0 }
-        var count = 0
-        var checkDate = Calendar.current.startOfDay(for: .now)
         let calendar = Calendar.current
-        while true {
-            let hasEntry = entries.contains { calendar.isDate($0.timestamp, inSameDayAs: checkDate) }
-            if hasEntry {
-                count += 1
-                checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
-            } else {
-                break
-            }
+        let loggedDays = Set(entries.map { calendar.startOfDay(for: $0.timestamp) })
+
+        guard let mostRecentLoggedDay = loggedDays.max() else { return 0 }
+
+        var count = 0
+        var checkDate = mostRecentLoggedDay
+
+        while loggedDays.contains(checkDate) {
+            count += 1
+            checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
         }
+
         return count
     }
 
@@ -109,9 +111,10 @@ struct MoodTabView: View {
             }
         }
         let activityScore = entry.activityNames.reduce(0) { acc, name in
-            if Self.wellnessActivities.contains(name)    { return acc + 2 }
-            if Self.socialActivities.contains(name)      { return acc + 1 }
-            if Self.enrichmentActivities.contains(name)  { return acc + 1 }
+            let normalizedName = name.lowercased()
+            if Self.wellnessActivities.contains(normalizedName)    { return acc + 2 }
+            if Self.socialActivities.contains(normalizedName)      { return acc + 1 }
+            if Self.enrichmentActivities.contains(normalizedName)  { return acc + 1 }
             return acc
         }
         return emotionScore + activityScore
@@ -160,17 +163,35 @@ struct MoodTabView: View {
     }
 
     private var topEmotion: String? {
-        let names = entries.flatMap { $0.emotionNames }
+        let names = sevenDayEntries.flatMap { $0.emotionNames }
         guard !names.isEmpty else { return nil }
-        return names.reduce(into: [:]) { $0[$1, default: 0] += 1 }
-            .max(by: { $0.value < $1.value })?.key
+
+        let counts = names.reduce(into: [String: Int]()) { result, name in
+            result[name.lowercased(), default: 0] += 1
+        }
+
+        guard let maxCount = counts.values.max() else { return nil }
+        guard let topName = counts.filter({ $0.value == maxCount }).keys.sorted().first else { return nil }
+
+        return MoodEmotion.all.first {
+            $0.name.caseInsensitiveCompare(topName) == .orderedSame
+        }?.name ?? topName.capitalized
     }
 
     private var topActivity: String? {
-        let names = entries.flatMap { $0.activityNames }
+        let names = sevenDayEntries.flatMap { $0.activityNames }
         guard !names.isEmpty else { return nil }
-        return names.reduce(into: [:]) { $0[$1, default: 0] += 1 }
-            .max(by: { $0.value < $1.value })?.key
+
+        let counts = names.reduce(into: [String: Int]()) { result, name in
+            result[name.lowercased(), default: 0] += 1
+        }
+
+        guard let maxCount = counts.values.max() else { return nil }
+        guard let topName = counts.filter({ $0.value == maxCount }).keys.sorted().first else { return nil }
+
+        return MoodActivity.all.first {
+            $0.name.caseInsensitiveCompare(topName) == .orderedSame
+        }?.name ?? topName.capitalized
     }
     
     private func showPremiumRequiredMessage() {
@@ -311,6 +332,7 @@ struct MoodTabView: View {
                     showPremiumRequiredMessage()
                 },
                 onSave: {
+                    refreshMoodWidgetSoon()
                     withAnimation { showBanner = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
                         withAnimation { showBanner = false }
@@ -336,6 +358,14 @@ struct MoodTabView: View {
                 Text("You can talk it out again in \(hours)h \(minutes)m. Give yourself time to sit with what came up.")
             } else {
                 Text("You can talk it out again in \(minutes) minute\(minutes == 1 ? "" : "s"). Give yourself time to sit with what came up.")
+            }
+        }
+        .onChange(of: entries) { _, newEntries in
+            LunixiaMoodWidgetWriter.write(allEntries: newEntries)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                LunixiaMoodWidgetWriter.write(allEntries: entries)
             }
         }
     }
@@ -421,7 +451,7 @@ struct MoodTabView: View {
 
                 // Header row
                 HStack {
-                    Text("7-day snapshot")
+                    Text("7-Day Snapshot")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(LColors.textSecondary)
                     Spacer()
@@ -440,7 +470,7 @@ struct MoodTabView: View {
                 if !sevenDayEntries.isEmpty {
                     let breakdown = sevenDayEmotionBreakdown
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("emotional range")
+                        Text("Emotional Range")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(LColors.textSecondary.opacity(0.5))
 
@@ -477,9 +507,9 @@ struct MoodTabView: View {
                         .frame(height: 10)
 
                         HStack(spacing: 14) {
-                            breakdownLegendDot(color: Color(lunixiaHex: "#9B6FF7"), label: "positive", value: breakdown.positive)
-                            breakdownLegendDot(color: Color(lunixiaHex: "#03dbfc"), label: "neutral",  value: breakdown.neutral)
-                            breakdownLegendDot(color: Color(lunixiaHex: "#e019d4"), label: "negative", value: breakdown.negative)
+                            breakdownLegendDot(color: Color(lunixiaHex: "#9B6FF7"), label: "Positive", value: breakdown.positive)
+                            breakdownLegendDot(color: Color(lunixiaHex: "#03dbfc"), label: "Neutral",  value: breakdown.neutral)
+                            breakdownLegendDot(color: Color(lunixiaHex: "#e019d4"), label: "Negative", value: breakdown.negative)
                         }
                     }
 
@@ -491,12 +521,13 @@ struct MoodTabView: View {
                 // Top emotion + activity row
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("most felt")
+                        Text("Most Felt")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(LColors.textSecondary.opacity(0.5))
                         Text(topEmotion ?? "—")
                             .font(.system(size: 15, weight: .black, design: .rounded))
                             .foregroundStyle(LGradients.header)
+                            .contentTransition(.identity)
                     }
 
                     Spacer()
@@ -508,12 +539,13 @@ struct MoodTabView: View {
                     Spacer()
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("top activity")
+                        Text("Top Activity")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(LColors.textSecondary.opacity(0.5))
                         Text(topActivity ?? "—")
                             .font(.system(size: 15, weight: .black, design: .rounded))
                             .foregroundStyle(LGradients.header)
+                            .contentTransition(.identity)
                     }
                 }
             }
@@ -579,7 +611,11 @@ struct MoodTabView: View {
     @ViewBuilder
     private var todayContent: some View {
         if let entry = todayEntry {
-            MoodLogCard(entry: entry) { selectedEntry = entry }
+            MoodLogCard(
+                entry: entry,
+                onTap: { selectedEntry = entry },
+                onDelete: { deleteMoodEntry(entry) }
+            )
         } else {
             emptyState(message: "No mood logged today yet")
         }
@@ -594,7 +630,11 @@ struct MoodTabView: View {
         } else {
             VStack(spacing: 12) {
                 ForEach(visibleHistoryEntries) { entry in
-                    MoodLogCard(entry: entry) { selectedEntry = entry }
+                    MoodLogCard(
+                        entry: entry,
+                        onTap: { selectedEntry = entry },
+                        onDelete: { deleteMoodEntry(entry) }
+                    )
                 }
             }
         }
@@ -618,6 +658,24 @@ struct MoodTabView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
     }
+
+    private func refreshMoodWidgetSoon() {
+        DispatchQueue.main.async {
+            LunixiaMoodWidgetWriter.write(allEntries: entries)
+        }
+    }
+
+    private func deleteMoodEntry(_ entry: MoodEntry) {
+        if selectedEntry?.id == entry.id {
+            selectedEntry = nil
+        }
+
+        modelContext.delete(entry)
+        try? modelContext.save()
+        refreshMoodWidgetSoon()
+    }
+
+
 }
 
 // MARK: - Mood Log Card
@@ -625,6 +683,27 @@ struct MoodTabView: View {
 struct MoodLogCard: View {
     let entry: MoodEntry
     let onTap: () -> Void
+    let onDelete: () -> Void
+
+    private var displayEmotions: [MoodEmotion] {
+        if !entry.resolvedEmotions.isEmpty { return entry.resolvedEmotions }
+
+        return entry.emotionNames.map { savedName in
+            MoodEmotion.all.first {
+                $0.name.caseInsensitiveCompare(savedName) == .orderedSame
+            } ?? MoodEmotion(name: savedName.capitalized, category: .neutral)
+        }
+    }
+
+    private var displayActivities: [MoodActivity] {
+        if !entry.resolvedActivities.isEmpty { return entry.resolvedActivities }
+
+        return entry.activityNames.map { savedName in
+            MoodActivity.all.first {
+                $0.name.caseInsensitiveCompare(savedName) == .orderedSame
+            } ?? MoodActivity(name: savedName.capitalized, icon: "sparkle", isCustomAsset: true)
+        }
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -643,9 +722,9 @@ struct MoodLogCard: View {
                             .foregroundStyle(LColors.textSecondary.opacity(0.5))
                     }
 
-                    if !entry.resolvedEmotions.isEmpty {
+                    if !displayEmotions.isEmpty {
                         FlowLayout(spacing: 5) {
-                            ForEach(entry.resolvedEmotions.prefix(6)) { emotion in
+                            ForEach(displayEmotions.prefix(6)) { emotion in
                                 let colors = emotion.category.bubbleColors
                                 Text(emotion.name)
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -666,8 +745,8 @@ struct MoodLogCard: View {
                                             )
                                     )
                             }
-                            if entry.resolvedEmotions.count > 6 {
-                                Text("+\(entry.resolvedEmotions.count - 6)")
+                            if displayEmotions.count > 6 {
+                                Text("+\(displayEmotions.count - 6)")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .foregroundStyle(LColors.textSecondary)
                                     .padding(.horizontal, 10)
@@ -677,9 +756,9 @@ struct MoodLogCard: View {
                         }
                     }
 
-                    if !entry.resolvedActivities.isEmpty {
+                    if !displayActivities.isEmpty {
                         HStack(spacing: 6) {
-                            ForEach(entry.resolvedActivities.prefix(8)) { activity in
+                            ForEach(displayActivities.prefix(8)) { activity in
                                 Group {
                                     if activity.isCustomAsset {
                                         Image(activity.icon)
@@ -694,8 +773,8 @@ struct MoodLogCard: View {
                                 }
                                 .foregroundStyle(LColors.textSecondary.opacity(0.7))
                             }
-                            if entry.resolvedActivities.count > 8 {
-                                Text("+\(entry.resolvedActivities.count - 8)")
+                            if displayActivities.count > 8 {
+                                Text("+\(displayActivities.count - 8)")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .foregroundStyle(LColors.textSecondary.opacity(0.5))
                             }
@@ -712,5 +791,12 @@ struct MoodLogCard: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", image: "trash")
+            }
+        }
     }
 }

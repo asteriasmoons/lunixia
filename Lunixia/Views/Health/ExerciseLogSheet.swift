@@ -41,6 +41,7 @@ struct ExerciseLogSheet: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+
                 // Header
                 HStack {
                     Button { dismiss() } label: {
@@ -111,6 +112,9 @@ struct ExerciseLogSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 36)
             }
+        }
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 

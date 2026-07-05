@@ -5,25 +5,66 @@
 
 import Foundation
 import SwiftData
+import WidgetKit
 
 enum LunixiaPointsError: Error {
     case noActiveUser
     case insufficientPoints
 }
 
+struct LunixiaPointsWidgetSnapshot: Codable {
+    var currentPoints: Int
+    var currentLevel: Int
+    var progressInCurrentLevel: Int
+    var pointsNeededToNextLevel: Int
+    var pointsToday: Int
+    var pointsPerLevel: Int
+    var lastUpdated: Date
+}
+
 enum LunixiaPointsManager {
+
+    // MARK: - Widget Snapshot
+
+    private static let pointsWidgetAppGroupID = "group.com.asteriasmoons.Lunixia"
+    private static let pointsWidgetSnapshotKey = "lunixia.points.widget.snapshot"
+
+    static func savePointsWidgetSnapshot(from profile: LunixiaPointsProfile, pointsToday: Int = 0) {
+        let snapshot = LunixiaPointsWidgetSnapshot(
+            currentPoints: profile.currentPoints,
+            currentLevel: level(for: profile.currentPoints),
+            progressInCurrentLevel: progressInCurrentLevel(for: profile.currentPoints),
+            pointsNeededToNextLevel: pointsNeededToNextLevel(for: profile.currentPoints),
+            pointsToday: pointsToday,
+            pointsPerLevel: pointsPerLevel,
+            lastUpdated: Date()
+        )
+
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+
+        let defaults = UserDefaults(suiteName: pointsWidgetAppGroupID) ?? .standard
+        defaults.set(data, forKey: pointsWidgetSnapshotKey)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    static func savePointsWidgetSnapshot(from profile: LunixiaPointsProfile, in modelContext: ModelContext) {
+        let todayPoints = (try? pointsEarnedToday(in: modelContext, userId: profile.userId)) ?? 0
+        savePointsWidgetSnapshot(from: profile, pointsToday: todayPoints)
+    }
 
     // MARK: - Point Values
 
-    static let journalEntryPoints    = 20
+    static let journalEntryPoints    = 25
     static let moodLogPoints         = 15
-    static let vitalsLogPoints       = 10
+    static let vitalsLogPoints       = 15
     static let exerciseLogPoints     = 10
-    static let medicationTakenPoints = 8
+    static let medicationTakenPoints = 10
     static let waterLogPoints        = 10
-    static let waterGoalPoints        = 20
+    static let waterGoalPoints        = 15
     static let stepGoalPoints         = 20
     static let dailyIntentionPoints   = 10
+    static let dailyTarotPoints      = 10
+    static let dailyLenormandPoints  = 10
 
     // MARK: - Leveling (100 pts per level)
 
@@ -71,10 +112,14 @@ enum LunixiaPointsManager {
     @discardableResult
     static func fetchOrCreateProfile(in modelContext: ModelContext, userId: String) throws -> LunixiaPointsProfile {
         let descriptor = FetchDescriptor<LunixiaPointsProfile>(predicate: #Predicate { $0.userId == userId })
-        if let existing = try modelContext.fetch(descriptor).first { return existing }
+        if let existing = try modelContext.fetch(descriptor).first {
+            savePointsWidgetSnapshot(from: existing, in: modelContext)
+            return existing
+        }
         let profile = LunixiaPointsProfile(userId: userId, currentWeekStartDayKey: weekStartDayKey())
         modelContext.insert(profile)
         try modelContext.save()
+        savePointsWidgetSnapshot(from: profile, in: modelContext)
         return profile
     }
 
@@ -136,6 +181,7 @@ enum LunixiaPointsManager {
         profile.lastEarnedAt = earnedAt
         profile.updatedAt = Date()
         try modelContext.save()
+        savePointsWidgetSnapshot(from: profile, in: modelContext)
         return true
     }
 
@@ -156,6 +202,7 @@ enum LunixiaPointsManager {
         profile.updatedAt = Date()
         modelContext.delete(entry)
         try modelContext.save()
+        savePointsWidgetSnapshot(from: profile, in: modelContext)
         return true
     }
 
@@ -175,6 +222,7 @@ enum LunixiaPointsManager {
         )
         modelContext.insert(snap)
         try modelContext.save()
+        savePointsWidgetSnapshot(from: profile, in: modelContext)
         return true
     }
 
@@ -243,6 +291,7 @@ enum LunixiaPointsManager {
         profile.updatedAt = now
 
         try? ctx.save()
+        savePointsWidgetSnapshot(from: profile, in: ctx)
     }
 
     @discardableResult
@@ -268,6 +317,7 @@ enum LunixiaPointsManager {
         profile.updatedAt = now
 
         try modelContext.save()
+        savePointsWidgetSnapshot(from: profile)
         return true
     }
 
@@ -350,6 +400,32 @@ enum LunixiaPointsManager {
             sourceKey: "dailyIntention:\(id)",
             points: dailyIntentionPoints,
             title: "Daily Intention",
+            earnedAt: date
+        )
+    }
+    
+    @discardableResult
+    static func awardDailyTarot(in ctx: ModelContext, id: String, at date: Date = Date()) throws -> Bool {
+        try awardPoints(
+            in: ctx,
+            sourceType: .dailyTarot,
+            sourceId: id,
+            sourceKey: "dailyTarot:\(id)",
+            points: dailyTarotPoints,
+            title: "Daily Tarot",
+            earnedAt: date
+        )
+    }
+
+    @discardableResult
+    static func awardDailyLenormand(in ctx: ModelContext, id: String, at date: Date = Date()) throws -> Bool {
+        try awardPoints(
+            in: ctx,
+            sourceType: .dailyLenormand,
+            sourceId: id,
+            sourceKey: "dailyLenormand:\(id)",
+            points: dailyLenormandPoints,
+            title: "Daily Lenormand",
             earnedAt: date
         )
     }

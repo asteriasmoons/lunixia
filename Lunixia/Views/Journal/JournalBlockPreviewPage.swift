@@ -36,13 +36,37 @@ struct JournalBlockPreviewPage: View {
                 JournalPagedContentView(entry: entry, onMentionTapped: handleMentionTap)
                     .frame(maxWidth: previewInnerPageMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 32)
+                    .padding(.top, 8)
+                    .padding(.bottom, 180)
             }
+            .scrollIndicators(.visible)
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 34, height: 34)
+                        .overlay(
+                            Circle()
+                                .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                        )
+                        .overlay {
+                            Image("xmarkwavy")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .foregroundStyle(resolvedToolbarColor)
+                        }
+                }
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
                     Button {
@@ -74,8 +98,21 @@ struct JournalBlockPreviewPage: View {
                         Label("Text Color", systemImage: "textformat")
                     }
                 } label: {
-                    Image(systemName: "paintbrush.fill")
-                        .foregroundStyle(.white)
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 34, height: 34)
+                        .overlay(
+                            Circle()
+                                .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                        )
+                        .overlay {
+                            Image("paintdrop")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .foregroundStyle(resolvedToolbarColor)
+                        }
                 }
                 .disabled(isCompletingAction || entry.deletedAt != nil || entry.book == nil)
                 .opacity((isCompletingAction || entry.deletedAt != nil || entry.book == nil) ? 0.5 : 1)
@@ -84,7 +121,16 @@ struct JournalBlockPreviewPage: View {
                     guard !isCompletingAction, entry.deletedAt == nil, entry.book != nil else { return }
                     showEditorPage = true
                 } label: {
-                    Text("Edit").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                    Text("Edit")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(resolvedToolbarColor)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                        )
                 }
                 .disabled(isCompletingAction || entry.deletedAt != nil || entry.book == nil)
                 .opacity((isCompletingAction || entry.deletedAt != nil || entry.book == nil) ? 0.5 : 1)
@@ -93,7 +139,21 @@ struct JournalBlockPreviewPage: View {
                     guard !isCompletingAction, entry.deletedAt == nil else { return }
                     showDeleteConfirmation = true
                 } label: {
-                    Image(systemName: "trash").foregroundStyle(.white)
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 34, height: 34)
+                        .overlay(
+                            Circle()
+                                .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                        )
+                        .overlay {
+                            Image("trash")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .foregroundStyle(resolvedToolbarColor)
+                        }
                 }
                 .disabled(isCompletingAction || entry.deletedAt != nil)
                 .opacity((isCompletingAction || entry.deletedAt != nil) ? 0.5 : 1)
@@ -188,6 +248,25 @@ struct JournalBlockPreviewPage: View {
             try? modelContext.save()
         }
         .onDisappear { isCompletingAction = false }
+    }
+    
+    private var resolvedToolbarColor: Color {
+        let hex = entry.textColorHex.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard
+            hex.count == 6,
+            let r = UInt8(hex.prefix(2), radix: 16),
+            let g = UInt8(hex.dropFirst(2).prefix(2), radix: 16),
+            let b = UInt8(hex.dropFirst(4).prefix(2), radix: 16)
+        else {
+            return .white
+        }
+
+        return Color(
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255
+        )
     }
 
     private func handleMentionTap(_ idString: String) {
@@ -298,5 +377,6 @@ private struct JournalPagedContentView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

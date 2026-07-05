@@ -137,7 +137,7 @@ struct JournalAnalysisOverlay: View {
                                     .progressViewStyle(.circular)
                                     .tint(.white)
                                     .scaleEffect(1.2)
-                                Text("Analyzing your entries…")
+                                Text("Analyzing your entry…")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(LColors.textSecondary)
                             }
@@ -291,7 +291,7 @@ struct JournalAnalysisOverlay: View {
             Image(systemName: "heart.text.square")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
-            Text("Today's Mood")
+            Text(dateLabel.isEmpty ? "Today's Mood" : "\(dateLabel)'s Mood")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(LColors.textSecondary)
                 .tracking(0.4)

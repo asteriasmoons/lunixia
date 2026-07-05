@@ -13,6 +13,7 @@ struct GoalSheet: View {
 
     @State private var waterInput: String = ""
     @State private var stepsInput: String = ""
+    @State private var sleepInput: String = ""
 
     var body: some View {
         ZStack {
@@ -44,6 +45,7 @@ struct GoalSheet: View {
                 VStack(spacing: 14) {
                     goalField(label: "Daily Water Goal", unit: "oz", text: $waterInput, placeholder: "\(Int(goals.dailyWaterOz))")
                     goalField(label: "Daily Steps Goal", unit: "steps", text: $stepsInput, placeholder: "\(goals.dailySteps)")
+                    goalField(label: "Sleep Goal", unit: "hours", text: $sleepInput, placeholder: String(format: "%.1f", goals.sleepGoalHours))
                 }
                 .padding(.horizontal, 20)
 
@@ -52,6 +54,7 @@ struct GoalSheet: View {
                 Button {
                     if let oz = Double(waterInput), oz > 0 { goals.dailyWaterOz = oz }
                     if let steps = Int(stepsInput), steps > 0 { goals.dailySteps = steps }
+                    if let sleep = Double(sleepInput), sleep > 0 { goals.sleepGoalHours = sleep }
                     onSave()
                     dismiss()
                 } label: {
@@ -78,6 +81,9 @@ struct GoalSheet: View {
                 .padding(.bottom, 36)
             }
         }
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 
     @ViewBuilder
@@ -89,7 +95,7 @@ struct GoalSheet: View {
 
             HStack {
                 TextField(placeholder, text: text)
-                    .keyboardType(.numberPad)
+                    .keyboardType(unit == "hours" ? .decimalPad : .numberPad)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(LColors.textPrimary)
                 Text(unit)

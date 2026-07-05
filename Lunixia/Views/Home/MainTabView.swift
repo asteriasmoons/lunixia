@@ -170,7 +170,7 @@ struct FloatingTabBar: View {
                     .zIndex(1)
             }
 
-            HStack(spacing: 0) {
+            HStack(spacing: 10) {
                 ForEach(leadingTabs, id: \.self) { tab in
                     tabButton(tab)
                 }
@@ -186,33 +186,16 @@ struct FloatingTabBar: View {
             .padding(.bottom, 10)
             .background {
                 ZStack {
-                    Capsule().fill(LColors.bg.opacity(0.95))
-                    Capsule().fill(
-                        LinearGradient(
-                            colors: [
-                                LColors.gradientBlue.opacity(0.06),
-                                LColors.gradientPurple.opacity(0.06)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    Capsule().strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                LColors.gradientBlue.opacity(0.95),
-                                LColors.gradientPurple.opacity(0.95),
-                                Color.white.opacity(0.45)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.2
-                    )
+                    Capsule(style: .continuous)
+                        .fill(LColors.bg.opacity(0.88))
+
+                    GlassCard(cornerRadius: 999, padding: 0) {
+                        Color.clear
+                    }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 52)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 42)
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.82), value: showMoreTabs)
     }
@@ -228,18 +211,9 @@ struct FloatingTabBar: View {
         } label: {
             ZStack {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    LColors.gradientBlue.opacity(0.35),
-                                    LColors.gradientPurple.opacity(0.35)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 26)
+                    Circle()
+                        .fill(LGradients.header.opacity(0.22))
+                        .frame(width: 34, height: 34)
                 }
 
                 Image(tab.icon)
@@ -249,12 +223,12 @@ struct FloatingTabBar: View {
                     .frame(width: 22, height: 22)
                     .foregroundStyle(
                         isSelected
-                        ? AnyShapeStyle(LGradients.blue)
+                        ? AnyShapeStyle(LGradients.header)
                         : AnyShapeStyle(Color.white.opacity(0.4))
                     )
             }
-            .frame(height: 26)
-            .frame(maxWidth: .infinity)
+            .frame(width: 42, height: 34)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -267,20 +241,20 @@ struct FloatingTabBar: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(LGradients.blue)
-                    .frame(width: 42, height: 42)
+                    .fill(LGradients.header)
+                    .frame(width: 44, height: 44)
                     .shadow(color: LColors.gradientBlue.opacity(0.35), radius: 10, x: 0, y: 5)
 
                 Image("addwavy")
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 22, height: 22)
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(LColors.bg)
                     .rotationEffect(.degrees(showMoreTabs ? 45 : 0))
             }
-            .frame(height: 42)
-            .frame(maxWidth: .infinity)
+            .frame(width: 54, height: 42)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(overflowTabs.isEmpty)
@@ -304,16 +278,16 @@ struct FloatingTabBar: View {
                             .frame(width: 18, height: 18)
                             .foregroundStyle(
                                 selectedTab == tab
-                                ? AnyShapeStyle(LGradients.blue)
+                                ? AnyShapeStyle(LGradients.header)
                                 : AnyShapeStyle(LColors.textSecondary)
                             )
                             .frame(width: 34, height: 34)
                             .background(
                                 selectedTab == tab ? LColors.glassSurface2 : LColors.glassSurface,
-                                in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                in: Circle()
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                Circle()
                                     .strokeBorder(LColors.glassBorder, lineWidth: 1)
                             )
 

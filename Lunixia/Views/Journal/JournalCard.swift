@@ -29,7 +29,7 @@ struct JournalCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(entry.title.isEmpty ? "Untitled" : entry.title)
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 16, weight: .black, design: .rounded))
                             .foregroundStyle(LColors.textPrimary)
                         Spacer()
                         Text(dateLabel)

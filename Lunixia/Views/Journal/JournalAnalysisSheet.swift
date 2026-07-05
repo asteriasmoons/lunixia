@@ -18,6 +18,8 @@ struct JournalAnalysisSheet: View {
 
     let state: AnalysisState
     let onRetry: () -> Void
+    var onClose: (() -> Void)? = nil
+    var onDone: (() -> Void)? = nil
 
     var dateLabel: String = ""
     var hasPrevious: Bool = false
@@ -124,7 +126,7 @@ struct JournalAnalysisSheet: View {
             )
 
             Button {
-                dismiss()
+                onClose?() ?? dismiss()
             } label: {
                 Image("xmarkwavy")
                     .renderingMode(.template)
@@ -150,7 +152,7 @@ struct JournalAnalysisSheet: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.white)
 
-            Text("Tap below to generate your daily analysis for today.")
+            Text("Tap below to generate an analysis for this entry.")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(LColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -178,7 +180,7 @@ struct JournalAnalysisSheet: View {
                 .tint(.white)
                 .scaleEffect(1.2)
 
-            Text("Analyzing your entries…")
+            Text("Analyzing your entry…")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(LColors.textSecondary)
         }
@@ -261,7 +263,7 @@ struct JournalAnalysisSheet: View {
                 }
                 .buttonStyle(.plain)
 
-                Button { dismiss() } label: {
+                Button { onDone?() ?? dismiss() } label: {
                     Text("Done")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
@@ -296,7 +298,7 @@ struct JournalAnalysisSheet: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
 
-                Text("Today's Mood")
+                Text(dateLabel.isEmpty ? "Today's Mood" : "\(dateLabel)'s Mood")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(LColors.textSecondary)
                     .tracking(0.4)

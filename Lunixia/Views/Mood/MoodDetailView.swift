@@ -45,7 +45,7 @@ struct MoodDetailView: View {
                     if !entry.resolvedEmotions.isEmpty {
                         GlassCard(padding: 18) {
                             VStack(alignment: .leading, spacing: 12) {
-                                sectionLabel(icon: "xsmile", isCustom: true, text: "emotions")
+                                sectionLabel(icon: "xsmile", isCustom: true, text: "Inner Weather")
 
                                 FlowLayout(spacing: 7) {
                                     ForEach(entry.resolvedEmotions) { emotion in
@@ -79,7 +79,7 @@ struct MoodDetailView: View {
                     if !entry.resolvedActivities.isEmpty {
                         GlassCard(padding: 18) {
                             VStack(alignment: .leading, spacing: 12) {
-                                sectionLabel(icon: "sparkle", isCustom: true, text: "activities")
+                                sectionLabel(icon: "sparkle", isCustom: true, text: "Activities")
 
                                 FlowLayout(spacing: 7) {
                                     ForEach(entry.resolvedActivities) { activity in
@@ -114,7 +114,7 @@ struct MoodDetailView: View {
                     // MARK: Attachments card
                     GlassCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 14) {
-                            sectionLabel(icon: "balancewavy", isCustom: true, text: "check-in")
+                            sectionLabel(icon: "balancewavy", isCustom: true, text: "Lifestyle")
 
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
@@ -122,22 +122,16 @@ struct MoodDetailView: View {
                                 GridItem(.flexible()),
                                 GridItem(.flexible())
                             ], spacing: 16) {
-                                attachmentTile(icon: "sun", isCustom: true, label: "Weather",
-                                    value: entry.weatherNote.isEmpty ? "--" : entry.weatherNote)
                                 attachmentTile(icon: "moonzs", isCustom: true, label: "Sleep",
                                     value: entry.sleepHours == 0 ? "--" : String(format: "%.1fh", entry.sleepHours))
                                 attachmentTile(icon: "dumbbell", isCustom: true, label: "Exercise",
                                     value: entry.exerciseMinutes == 0 ? "--" : "\(entry.exerciseMinutes)m")
                                 attachmentTile(icon: "shoe", isCustom: true, label: "Steps",
                                     value: entry.steps == 0 ? "--" : "\(entry.steps)")
-                                attachmentTile(icon: "sunflower", isCustom: true, label: "Meditation",
+                                attachmentTile(icon: "sunflower", isCustom: true, label: "Mindfulness",
                                     value: entry.meditationMinutes == 0 ? "--" : "\(entry.meditationMinutes)m")
-                                attachmentTile(icon: "arrow.triangle.2.circlepath", isCustom: false, label: "Cycle",
-                                    value: entry.cycleNote.isEmpty ? "--" : entry.cycleNote)
                                 attachmentTile(icon: "bottle", isCustom: true, label: "Water",
                                     value: entry.waterOz == 0 ? "--" : String(format: "%.0foz", entry.waterOz))
-                                attachmentTile(icon: "glass", isCustom: true, label: "Caffeine",
-                                    value: entry.caffeineNote.isEmpty ? "--" : entry.caffeineNote)
                             }
                         }
                     }
@@ -147,7 +141,7 @@ struct MoodDetailView: View {
                     if !entry.note.isEmpty {
                         GlassCard(padding: 18) {
                             VStack(alignment: .leading, spacing: 10) {
-                                sectionLabel(icon: "writenote", isCustom: true, text: "note")
+                                sectionLabel(icon: "writenote", isCustom: true, text: "Note")
                                 Text(entry.note)
                                     .font(.system(size: 14, weight: .regular, design: .rounded))
                                     .foregroundStyle(LColors.textPrimary.opacity(0.88))
@@ -176,15 +170,15 @@ struct MoodDetailView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 17, height: 17)
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(LGradients.header)
             } else {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(LGradients.header)
             }
             Text(text)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(LColors.textSecondary)
         }
     }

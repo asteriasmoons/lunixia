@@ -77,6 +77,11 @@ struct SpiritualView: View {
                     )
                     modelContext.insert(record)
                     try? modelContext.save()
+                    _ = try? LunixiaPointsManager.awardDailyTarot(
+                        in: modelContext,
+                        id: record.dayKey,
+                        at: record.updatedAt
+                    )
                     isDrawingTarot = false
                 }
             } catch {
@@ -111,6 +116,11 @@ struct SpiritualView: View {
                     )
                     modelContext.insert(record)
                     try? modelContext.save()
+                    _ = try? LunixiaPointsManager.awardDailyLenormand(
+                        in: modelContext,
+                        id: record.dayKey,
+                        at: record.updatedAt
+                    )
                     isDrawingLenormand = false
                 }
             } catch {
@@ -300,6 +310,7 @@ struct SpiritualView: View {
         .onAppear {
             resetDailyHoroscopeIfNeeded()
             scheduleHoroscopeMidnightRefresh()
+            LunixiaMoonPhaseWidgetWriter.write()
         }
         .onDisappear {
             horoscopeMidnightRefreshTask?.cancel()

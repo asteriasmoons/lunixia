@@ -78,6 +78,31 @@ struct JournalBlockEditorPage: View {
         if b.type == .callout || b.isCalloutStyle { return "Callout Color" }
         return "Blockquote Color"
     }
+    
+    private var resolvedToolbarColor: Color {
+        guard
+            let entry = workingEntry,
+            !entry.textColorHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return .white
+        }
+
+        let hex = entry.textColorHex
+
+        guard
+            let r = UInt8(hex.prefix(2), radix: 16),
+            let g = UInt8(hex.dropFirst(2).prefix(2), radix: 16),
+            let b = UInt8(hex.dropFirst(4).prefix(2), radix: 16)
+        else {
+            return .white
+        }
+
+        return Color(
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255
+        )
+    }
 
     var body: some View {
         ZStack {
@@ -176,16 +201,41 @@ struct JournalBlockEditorPage: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "paintbrush.fill").foregroundStyle(.white)
+                        Circle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(width: 34, height: 34)
+                            .overlay(
+                                Circle()
+                                    .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                            )
+                            .overlay {
+                                Image("paintdrop")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 15, height: 15)
+                                    .foregroundStyle(resolvedToolbarColor)
+                            }
                     }
                     .disabled(isCompletingAction || workingEntry == nil)
                     .opacity((isCompletingAction || workingEntry == nil) ? 0.5 : 1)
 
-                    Button("Done") { saveAndClose() }
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .disabled(isCompletingAction || workingEntry == nil)
-                        .opacity((isCompletingAction || workingEntry == nil) ? 0.5 : 1)
+                    Button {
+                        saveAndClose()
+                    } label: {
+                        Text("Done")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(resolvedToolbarColor)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
+                            .background(Color.white.opacity(0.08), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(resolvedToolbarColor.opacity(0.55), lineWidth: 1)
+                            )
+                    }
+                    .disabled(isCompletingAction || workingEntry == nil)
+                    .opacity((isCompletingAction || workingEntry == nil) ? 0.5 : 1)
                 }
             }
         }

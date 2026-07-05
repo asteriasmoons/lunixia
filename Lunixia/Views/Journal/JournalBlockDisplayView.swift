@@ -63,7 +63,7 @@ struct JournalBlockDisplayView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 28)
+                    .padding(.vertical, 22)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(Color.black.opacity(0.34))
@@ -86,6 +86,8 @@ struct JournalBlockDisplayView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.bottom, 160)
         } // end full paged mode
     }
 
@@ -548,7 +550,7 @@ struct JournalBlockDisplayView: View {
         }
 
         return AnyView(
-            RichBlockTextView(attributedText: mutable, isSelectable: true, linkTintColor: UIColor.systemBlue, onMentionTapped: onMentionTapped)
+            RichBlockTextView(attributedText: mutable, isSelectable: false, linkTintColor: UIColor.systemBlue, onMentionTapped: onMentionTapped)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .layoutPriority(1)
@@ -694,9 +696,10 @@ private struct JournalAttributedTextView: UIViewRepresentable {
     let attributed: NSAttributedString
 
     func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView()
+        let tv = JournalTableCellTextView()
         tv.backgroundColor = .clear
         tv.isEditable = false
+        tv.isSelectable = false
         tv.isScrollEnabled = false
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
@@ -715,6 +718,16 @@ private struct JournalAttributedTextView: UIViewRepresentable {
         let w = min(proposal.width ?? 120, 200)
         let fitting = uiView.sizeThatFits(CGSize(width: w, height: .greatestFiniteMagnitude))
         return CGSize(width: max(80, w), height: max(1, fitting.height))
+    }
+
+    final class JournalTableCellTextView: UITextView {
+        override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            if let pan = gestureRecognizer as? UIPanGestureRecognizer {
+                let velocity = pan.velocity(in: self)
+                if abs(velocity.y) > abs(velocity.x) * 2 { return false }
+            }
+            return super.gestureRecognizerShouldBegin(gestureRecognizer)
+        }
     }
 }
 

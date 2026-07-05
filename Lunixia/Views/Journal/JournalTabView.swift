@@ -459,7 +459,7 @@ struct JournalTabView: View {
     }
     
     private func migrateEntriesIntoDefaultBookIfNeeded() {
-        // Goal: if user already had entries (old system), they shouldn’t become “homeless”.
+        // Goal: if user already had entries (old system), they shouldn't become "homeless".
         // We auto-create a default book and assign any entries with nil book to it.
         
         let hasHomelessEntries = allEntries.contains { $0.book == nil }
@@ -579,7 +579,7 @@ struct JournalTabView: View {
                     }
                     
                     
-                    Text(journaledToday ? "You’ve already journaled today — your streak is safe." : "Write today to keep your streak going.")
+                    Text(journaledToday ? "You've already journaled today — your streak is safe." : "Write today to keep your streak going.")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(LColors.textSecondary)
                 }
@@ -818,7 +818,7 @@ struct JournalTabView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .top, spacing: 8) {
                                 Text(title)
-                                    .font(.system(size: 16, weight: .black))
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundStyle(.white)
                                     .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
                                     .lineLimit(2)
@@ -841,7 +841,7 @@ struct JournalTabView: View {
                             
                             Spacer(minLength: 0)
                             
-                            // Tiny “label plate” near bottom
+                            // Tiny "label plate" near bottom
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color.white.opacity(0.12))
                                 .frame(height: 28)
@@ -900,11 +900,21 @@ struct JournalTabView: View {
         @State private var promptLoading = false
         @State private var promptError: String?
         
-        // AI analysis overlay state
+        // AI analysis sheet state
         @State private var showAnalysisSheet = false
         @State private var analysisState: JournalAnalysisSheet.AnalysisState = .idle
         @State private var analysisDateKeys: [String] = []
-        @State private var selectedAnalysisDateKey: String = JournalBookDetailView.todayAnalysisDateKey()
+        @State private var selectedAnalysisDateKey: String = ""
+        @State private var selectedEntryForAnalysis: JournalEntry? = nil
+
+        // Analysis screen routing
+        private enum AnalysisSheetScreen {
+            case landing
+            case viewRecent
+            case entryPicker
+            case result
+        }
+        @State private var analysisScreen: AnalysisSheetScreen = .landing
         
         // Stored prompt feedback state
         @State private var promptShowCopied = false
@@ -947,8 +957,6 @@ struct JournalTabView: View {
             Array(prompts.prefix(visiblePromptCount))
         }
 
-        
-        
         var body: some View {
             ZStack {
                 LunixiaBackground()
@@ -983,7 +991,6 @@ struct JournalTabView: View {
                         .presentationDragIndicator(.visible)
                 }
                 
-                
                 // MARK: - Journal Prompt Overlay
                 if showPromptSheet {
                     journalPromptOverlay
@@ -1002,28 +1009,10 @@ struct JournalTabView: View {
                 }
             }
             .sheet(isPresented: $showAnalysisSheet) {
-                JournalAnalysisSheet(
-                    state: analysisState,
-                    onRetry: {
-                        Task { await runAnalysis() }
-                    },
-                    dateLabel: formattedAnalysisDateLabel,
-                    hasPrevious: previousAnalysisDateKey != nil,
-                    hasNext: nextAnalysisDateKey != nil,
-                    onPrevious: {
-                        guard let previousAnalysisDateKey else { return }
-                        selectedAnalysisDateKey = previousAnalysisDateKey
-                        Task { await loadAnalysisForSelectedDate() }
-                    },
-                    onNext: {
-                        guard let nextAnalysisDateKey else { return }
-                        selectedAnalysisDateKey = nextAnalysisDateKey
-                        Task { await loadAnalysisForSelectedDate() }
-                    }
-                )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .preferredColorScheme(.dark)
+                analysisMasterSheet
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.hidden)
+                    .preferredColorScheme(.dark)
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showPromptSheet)
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showStoredPromptsPopup)
@@ -1074,9 +1063,12 @@ struct JournalTabView: View {
                         }
 
                         Button {
-                            selectedAnalysisDateKey = Self.todayAnalysisDateKey()
+                            analysisScreen = .landing
+                            selectedEntryForAnalysis = nil
+                            selectedAnalysisDateKey = ""
+                            analysisState = .idle
+                            analysisDateKeys = []
                             showAnalysisSheet = true
-                            Task { await loadAnalysisDates() }
                         } label: {
                             Label("Analyze", image: "dotswavy")
                                 .foregroundStyle(.white)
@@ -1730,8 +1722,7 @@ struct JournalTabView: View {
         }
         
         private var analysisNavigationKeys: [String] {
-            let todayKey = Self.todayAnalysisDateKey()
-            return Array(Set(analysisDateKeys + [todayKey])).sorted(by: >)
+            return analysisDateKeys.sorted(by: >)
         }
         
         private var selectedAnalysisDateIndex: Int? {
@@ -1770,13 +1761,9 @@ struct JournalTabView: View {
                 let dates = try await JournalAnalysisService.shared.fetchAnalysisDates(userId: userId, bookId: bookId)
                 await MainActor.run {
                     analysisDateKeys = dates
-                    if selectedAnalysisDateKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        selectedAnalysisDateKey = Self.todayAnalysisDateKey()
-                    }
                 }
-                await loadAnalysisForSelectedDate()
             } catch {
-                await MainActor.run { analysisState = .error(error.localizedDescription) }
+                // Silently ignore — date list failing shouldn't break the sheet
             }
         }
         
@@ -1805,6 +1792,38 @@ struct JournalTabView: View {
                 await MainActor.run { analysisState = .error(error.localizedDescription) }
             }
         }
+
+        private func loadMostRecentAnalysis() async {
+            guard let userId = appState.currentAppleUserId,
+                  !userId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                await MainActor.run { analysisState = .error("You need to be signed in with Apple to use this feature.") }
+                return
+            }
+
+            let bookId = book.uuid.uuidString
+
+            do {
+                let dates = try await JournalAnalysisService.shared.fetchAnalysisDates(userId: userId, bookId: bookId)
+                await MainActor.run { analysisDateKeys = dates }
+
+                guard let mostRecent = dates.sorted(by: >).first else {
+                    await MainActor.run { analysisState = .empty }
+                    return
+                }
+
+                await MainActor.run { selectedAnalysisDateKey = mostRecent }
+
+                if let result = try await JournalAnalysisService.shared.fetchAnalysis(userId: userId, bookId: bookId, dateKey: mostRecent) {
+                    await MainActor.run {
+                        analysisState = .result(themes: result.themes, mood: result.mood, reflection: result.reflection)
+                    }
+                } else {
+                    await MainActor.run { analysisState = .empty }
+                }
+            } catch {
+                await MainActor.run { analysisState = .error(error.localizedDescription) }
+            }
+        }
         
         private func runAnalysis() async {
             await MainActor.run {
@@ -1819,31 +1838,26 @@ struct JournalTabView: View {
                 return
             }
             
-            let bookId = book.uuid.uuidString
-            let targetDateKey = selectedAnalysisDateKey.isEmpty ? Self.todayAnalysisDateKey() : selectedAnalysisDateKey
-            
-            let cal = Calendar.autoupdatingCurrent
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            formatter.calendar = cal
-            formatter.timeZone = TimeZone.autoupdatingCurrent
-            let selectedDate = formatter.date(from: targetDateKey) ?? Date()
-            let selectedDayStart = cal.startOfDay(for: selectedDate)
-            guard let selectedDayEnd = cal.date(byAdding: .day, value: 1, to: selectedDayStart) else { return }
-            let selectedDayEntries = entries.filter { $0.createdAt >= selectedDayStart && $0.createdAt < selectedDayEnd }
-            
-            guard !selectedDayEntries.isEmpty else {
+            guard let entry = selectedEntryForAnalysis else {
                 await MainActor.run {
-                    analysisState = .empty
+                    analysisState = .error("No entry selected for analysis.")
                 }
                 return
             }
+            
+            let bookId = book.uuid.uuidString
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            formatter.calendar = Calendar.autoupdatingCurrent
+            formatter.timeZone = TimeZone.autoupdatingCurrent
+            let targetDateKey = formatter.string(from: entry.createdAt)
             
             do {
                 let result = try await JournalAnalysisService.shared.analyze(
                     userId: userId,
                     bookId: bookId,
-                    entries: selectedDayEntries
+                    dateKey: targetDateKey,
+                    entries: [entry]
                 )
                 await MainActor.run {
                     analysisState = .result(
@@ -1861,11 +1875,306 @@ struct JournalTabView: View {
                 }
             } catch {
                 await MainActor.run {
-                    analysisState = .error(error.localizedDescription)
+                    let message = (error as NSError).localizedDescription
+                    analysisState = .error(message.isEmpty ? "Something went wrong. Please try again." : message)
                 }
             }
         }
-        
+
+        // MARK: - Analysis Master Sheet (landing → view recent OR pick entry → result)
+
+        private var analysisMasterSheet: some View {
+            ZStack {
+                LunixiaBackground().ignoresSafeArea()
+
+                switch analysisScreen {
+                case .landing:
+                    analysisLandingScreen
+
+                case .viewRecent:
+                    JournalAnalysisSheet(
+                        state: analysisState,
+                        onRetry: { Task { await runAnalysis() } },
+                        onClose: { analysisScreen = .landing },
+                        onDone: { showAnalysisSheet = false },
+                        dateLabel: formattedAnalysisDateLabel,
+                        hasPrevious: previousAnalysisDateKey != nil,
+                        hasNext: nextAnalysisDateKey != nil,
+                        onPrevious: {
+                            guard let k = previousAnalysisDateKey else { return }
+                            selectedAnalysisDateKey = k
+                            Task { await loadAnalysisForSelectedDate() }
+                        },
+                        onNext: {
+                            guard let k = nextAnalysisDateKey else { return }
+                            selectedAnalysisDateKey = k
+                            Task { await loadAnalysisForSelectedDate() }
+                        }
+                    )
+
+                case .entryPicker:
+                    analysisEntryPickerScreen
+
+                case .result:
+                    JournalAnalysisSheet(
+                        state: analysisState,
+                        onRetry: { Task { await runAnalysis() } },
+                        onClose: { analysisScreen = .entryPicker },
+                        onDone: { showAnalysisSheet = false },
+                        dateLabel: formattedAnalysisDateLabel,
+                        hasPrevious: previousAnalysisDateKey != nil,
+                        hasNext: nextAnalysisDateKey != nil,
+                        onPrevious: {
+                            guard let k = previousAnalysisDateKey else { return }
+                            selectedAnalysisDateKey = k
+                            Task { await loadAnalysisForSelectedDate() }
+                        },
+                        onNext: {
+                            guard let k = nextAnalysisDateKey else { return }
+                            selectedAnalysisDateKey = k
+                            Task { await loadAnalysisForSelectedDate() }
+                        }
+                    )
+                }
+            }
+            .animation(.spring(response: 0.32, dampingFraction: 0.82), value: analysisScreen)
+        }
+
+        // ── Landing ──
+
+        private var analysisLandingScreen: some View {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Analysis")
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
+                    Button { showAnalysisSheet = false } label: {
+                        Image("xmarkwavy")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundStyle(LGradients.header)
+                    }.buttonStyle(.plain)
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 22)
+                .padding(.bottom, 16)
+
+                Rectangle().fill(LColors.glassBorder).frame(height: 1)
+
+                VStack(spacing: 14) {
+                    // View Analysis button
+                    Button {
+                        analysisState = .loading
+                        analysisScreen = .viewRecent
+                        Task { await loadMostRecentAnalysis() }
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(LGradients.blue.opacity(0.18))
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(LGradients.blue.opacity(0.5), lineWidth: 1)
+                                    )
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(LGradients.header)
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("View Analysis")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                Text("Load your most recent saved analysis")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(LColors.textSecondary)
+                            }
+                            Spacer()
+                            Image("chevright")
+                                .renderingMode(.template)
+                                .resizable().scaledToFit()
+                                .frame(width: 12, height: 12)
+                                .foregroundStyle(LColors.textSecondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(LColors.glassSurface))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LColors.glassBorder, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+
+                    // New Analysis button
+                    Button {
+                        selectedEntryForAnalysis = nil
+                        analysisScreen = .entryPicker
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(LGradients.blue.opacity(0.18))
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(LGradients.blue.opacity(0.5), lineWidth: 1)
+                                    )
+                                Image("pencilwrite")
+                                    .renderingMode(.template)
+                                    .resizable().scaledToFit()
+                                    .frame(width: 20, height: 20)
+                                    .foregroundStyle(LGradients.header)
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("New Analysis")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                Text("Pick an entry to generate a new analysis")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(LColors.textSecondary)
+                            }
+                            Spacer()
+                            Image("chevright")
+                                .renderingMode(.template)
+                                .resizable().scaledToFit()
+                                .frame(width: 12, height: 12)
+                                .foregroundStyle(LColors.textSecondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(LColors.glassSurface))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LColors.glassBorder, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 28)
+
+                Spacer()
+            }
+        }
+
+        // ── Entry Picker ──
+
+        private var analysisEntryPickerScreen: some View {
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        analysisScreen = .landing
+                    } label: {
+                        Image("chevleft")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 14, height: 14)
+                            .foregroundStyle(LGradients.header)
+                    }.buttonStyle(.plain)
+
+                    Spacer()
+
+                    VStack(spacing: 2) {
+                        Text("New Analysis")
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+                        Text("Pick an entry to reflect on")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(LColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Button { showAnalysisSheet = false } label: {
+                        Image("xmarkwavy")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundStyle(LGradients.header)
+                    }.buttonStyle(.plain)
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 22)
+                .padding(.bottom, 16)
+
+                Rectangle().fill(LColors.glassBorder).frame(height: 1)
+
+                if entries.isEmpty {
+                    VStack(spacing: 14) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 32))
+                            .foregroundStyle(LColors.textSecondary)
+                        Text("No entries yet")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                        Text("Write your first journal entry to generate an analysis.")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(LColors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 30)
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 10) {
+                            ForEach(entries, id: \.persistentModelID) { entry in
+                                entryPickerRow(entry)
+                            }
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 18)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
+        }
+
+        private func entryPickerRow(_ entry: JournalEntry) -> some View {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "MMM d, yyyy"
+            let dateStr = fmt.string(from: entry.createdAt)
+            let preview = entry.blockPreviewText.isEmpty ? entry.body : entry.blockPreviewText
+
+            return Button {
+                let keyFmt = DateFormatter()
+                keyFmt.dateFormat = "yyyy-MM-dd"
+                keyFmt.calendar = Calendar.autoupdatingCurrent
+                keyFmt.timeZone = TimeZone.autoupdatingCurrent
+                selectedAnalysisDateKey = keyFmt.string(from: entry.createdAt)
+                analysisState = .idle
+                selectedEntryForAnalysis = entry
+                analysisScreen = .result
+            } label: {
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(dateStr)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(LColors.textSecondary)
+                        if !preview.isEmpty {
+                            Text(preview)
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundStyle(LColors.textSecondary.opacity(0.8))
+                                .lineLimit(2)
+                                .padding(.top, 2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Image("chevright")
+                        .renderingMode(.template)
+                        .resizable().scaledToFit()
+                        .frame(width: 12, height: 12)
+                        .foregroundStyle(LColors.textSecondary)
+                        .padding(.top, 4)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(LColors.glassSurface))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LColors.glassBorder, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+
         private func generatePrompt() async {
             do {
                 await MainActor.run {

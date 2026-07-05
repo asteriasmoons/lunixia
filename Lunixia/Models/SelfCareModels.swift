@@ -18,6 +18,8 @@ enum LunixiaPointSourceType: String, Codable, CaseIterable {
     case waterGoal       = "waterGoal"
     case stepGoal        = "stepGoal"
     case dailyIntention  = "dailyIntention"
+    case dailyTarot      = "dailyTarot"
+    case dailyLenormand  = "dailyLenormand"
 
     var label: String {
         switch self {
@@ -30,6 +32,8 @@ enum LunixiaPointSourceType: String, Codable, CaseIterable {
         case .waterGoal:       return "Water Goal Reached"
         case .stepGoal:        return "Step Goal Reached"
         case .dailyIntention:  return "Daily Intention"
+        case .dailyTarot:      return "Daily Tarot"
+        case .dailyLenormand:  return "Daily Lenormand"
         }
     }
 
@@ -44,6 +48,8 @@ enum LunixiaPointSourceType: String, Codable, CaseIterable {
         case .waterGoal:       return "drops"
         case .stepGoal:        return "health"
         case .dailyIntention:  return "starfill"
+        case .dailyTarot:      return "crystalball"
+        case .dailyLenormand:  return "wand"
         }
     }
 }

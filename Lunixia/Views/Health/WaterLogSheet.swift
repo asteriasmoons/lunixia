@@ -141,6 +141,9 @@ struct WaterLogSheet: View {
                 Spacer()
             }
         }
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
     private func saveWater(_ oz: Double) {
         guard oz > 0 else { return }

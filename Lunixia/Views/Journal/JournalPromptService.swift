@@ -22,7 +22,7 @@ final class JournalPromptService {
 
     private init() {}
 
-    private let baseURL = "https://lystaria-api.fly.dev"
+    private let baseURL = "https://lystaria-api-production.up.railway.app"
 
     func generatePrompt(userId: String, modelContext: ModelContext) async throws -> JournalPromptResponse {
         let formatter = DateFormatter()

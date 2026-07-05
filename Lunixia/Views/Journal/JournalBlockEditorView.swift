@@ -82,20 +82,16 @@ struct JournalBlockEditorView: View {
                     }
 
                     ForEach(Array(pages.enumerated()), id: \.offset) { pageIndex, pageEntry in
-                        journalPageCard(pageIndex: pageIndex, pageEntry: pageEntry)
+                        journalPageCard(pageIndex: pageIndex, pageEntry: pageEntry, proxy: proxy)
                     }
                 }
-                .padding(.bottom, isKeyboardVisible ? 260 : 140)
+                .padding(.bottom, isKeyboardVisible ? 360 : 160)
                 .frame(maxWidth: innerPageMaxWidth, alignment: .top)
                 .frame(maxWidth: .infinity, alignment: .top)
             }
             .defaultScrollAnchor(.top)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                bottomAddBlockBar
-            }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
                 isKeyboardVisible = true
-                scrollFocusedBlockIntoView(proxy: proxy, delay: 0.18)
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                 isKeyboardVisible = false
@@ -103,15 +99,7 @@ struct JournalBlockEditorView: View {
             .onReceive(NotificationCenter.default.publisher(for: .journalBlockDidFocus)) { note in
                 if let id = note.object as? UUID {
                     focusedBlockID = id
-                    scrollFocusedBlockIntoView(proxy: proxy)
                 }
-            }
-            .onChange(of: focusedBlockID) { _, _ in
-                scrollFocusedBlockIntoView(proxy: proxy)
-            }
-            .onChange(of: entry.updatedAt) { _, _ in
-                guard isKeyboardVisible else { return }
-                scrollFocusedBlockIntoView(proxy: proxy, delay: 0.05)
             }
             .onDisappear {
                 scrollToFocusedBlockWorkItem?.cancel()
@@ -124,24 +112,25 @@ struct JournalBlockEditorView: View {
     @ViewBuilder
     private func journalPageCard(
         pageIndex: Int,
-        pageEntry: (blocks: [(Int, JournalBlock)], breakBlock: JournalBlock?)
+        pageEntry: (blocks: [(Int, JournalBlock)], breakBlock: JournalBlock?),
+        proxy: ScrollViewProxy
     ) -> some View {
         let page = pageEntry.blocks
 
-        journalPageCardContent(pageIndex: pageIndex, page: page)
+        journalPageCardContent(pageIndex: pageIndex, page: page, proxy: proxy)
             .background(journalPageCardBackground(pageIndex: pageIndex, page: page))
             .shadow(color: Color.black.opacity(0.25), radius: 12, x: 0, y: 4)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
         if let breakBlock = pageEntry.breakBlock {
-            journalBlockRow(for: breakBlock)
+            journalBlockRow(for: breakBlock, proxy: proxy)
                 .padding(.horizontal, 16)
         }
     }
 
     @ViewBuilder
-    private func journalPageCardContent(pageIndex: Int, page: [(Int, JournalBlock)]) -> some View {
+    private func journalPageCardContent(pageIndex: Int, page: [(Int, JournalBlock)], proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if pageIndex == 0, let header = identityHeader {
                 header
@@ -154,7 +143,7 @@ struct JournalBlockEditorView: View {
                         .foregroundStyle(LColors.textSecondary.opacity(0.5))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    journalPageRows(page: page)
+                    journalPageRows(page: page, proxy: proxy)
                 }
             }
             .padding(.horizontal, 20)
@@ -164,9 +153,9 @@ struct JournalBlockEditorView: View {
     }
 
     @ViewBuilder
-    private func journalPageRows(page: [(Int, JournalBlock)]) -> some View {
+    private func journalPageRows(page: [(Int, JournalBlock)], proxy: ScrollViewProxy) -> some View {
         ForEach(page, id: \.1.id) { (i, block) in
-            journalBlockRow(for: block)
+            journalBlockRow(for: block, proxy: proxy)
                 .opacity(draggingBlock?.id == block.id ? 0.4 : 1)
                 .onDrag {
                     draggingBlock = block
@@ -235,7 +224,7 @@ struct JournalBlockEditorView: View {
     }
 
     @ViewBuilder
-    private func journalBlockRow(for block: JournalBlock) -> some View {
+    private func journalBlockRow(for block: JournalBlock, proxy: ScrollViewProxy) -> some View {
         JournalBlockRow(
             block: block,
             onAddBelow: { b, type, initialText in insertBlockBelow(b, type, initialText) },
@@ -252,20 +241,30 @@ struct JournalBlockEditorView: View {
             onDeleteSelectedBlocks: deleteSelectedBlocks,
             onIndentSelectedBlocksIn: indentSelectedBlocksIn,
             onIndentSelectedBlocksOut: indentSelectedBlocksOut,
+            onTextHeightIncrease: { _ in },
             journalTextColor: resolvedJournalTextColor
         )
         .id(block.id)
     }
 
 
-    private func scrollFocusedBlockIntoView(proxy: ScrollViewProxy, delay: TimeInterval = 0.08) {
+    private func scrollFocusedBlockIntoView(
+        proxy: ScrollViewProxy,
+        delay: TimeInterval = 0.08,
+        anchor: UnitPoint = .bottom,
+        animated: Bool = true
+    ) {
         guard let focusedBlockID else { return }
 
         scrollToFocusedBlockWorkItem?.cancel()
 
         let workItem = DispatchWorkItem {
-            withAnimation(.easeOut(duration: 0.18)) {
-                proxy.scrollTo(focusedBlockID, anchor: .center)
+            if animated {
+                withAnimation(.easeOut(duration: 0.16)) {
+                    proxy.scrollTo(focusedBlockID, anchor: anchor)
+                }
+            } else {
+                proxy.scrollTo(focusedBlockID, anchor: anchor)
             }
         }
 
@@ -289,66 +288,6 @@ struct JournalBlockEditorView: View {
             }
         }
         return result
-    }
-
-    // MARK: - Bottom Bar
-
-    private var bottomAddBlockBar: some View {
-        HStack {
-            Spacer(minLength: 0)
-            if isSelectionMode {
-                batchSelectionBar
-            } else if isKeyboardVisible {
-                keyboardBar
-            } else {
-                addBlockMenu
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    private var keyboardBar: some View {
-        HStack(spacing: 10) {
-            Menu {
-                ForEach(JournalBlockType.allCases, id: \.self) { type in
-                    Button(labelForType(type)) { appendBlock(type: type) }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("Add Block")
-                }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(LGradients.blue)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
-
-            Button {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            } label: {
-                Text("Done")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(LGradients.blue)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color.black.opacity(0.36))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(LColors.glassBorder, lineWidth: 1))
     }
 
     private var isSelectionMode: Bool { !selectedBlockIDs.isEmpty }
@@ -407,29 +346,6 @@ struct JournalBlockEditorView: View {
         .background(Color.black.opacity(0.36))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(LColors.glassBorder, lineWidth: 1))
-    }
-
-    private var addBlockMenu: some View {
-        Menu {
-            ForEach(JournalBlockType.allCases, id: \.self) { type in
-                Button(labelForType(type)) { appendBlock(type: type) }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                Text("Add Block")
-            }
-            .frame(maxWidth: .infinity)
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(LGradients.blue)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(minWidth: 180)
-            .background(Color.white.opacity(0.06))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(LGradients.blue, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Selection Mode

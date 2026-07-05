@@ -15,12 +15,17 @@ struct HealthTabView: View {
     @Query(sort: \VitalsEntry.timestamp, order: .reverse) private var vitalsEntries: [VitalsEntry]
     @Query(sort: \ExerciseEntry.timestamp, order: .reverse) private var exerciseEntries: [ExerciseEntry]
     @Query(sort: \WaterEntry.timestamp, order: .reverse) private var waterEntries: [WaterEntry]
+    @Query(sort: \NapEntry.startDate, order: .reverse) private var napEntries: [NapEntry]
     @Query private var goals: [HealthGoals]
 
     @State private var showVitalsLog = false
     @State private var showExerciseLog = false
     @State private var showWaterLog = false
     @State private var showWaterClear = false
+    @State private var inlineWaterAddText = ""
+    @State private var inlineWaterClearText = ""
+    @State private var isInlineWaterAddActive = false
+    @State private var isInlineWaterClearActive = false
     @State private var showGoalSheet = false
     @State private var selectedVitals: VitalsEntry? = nil
     @State private var selectedExercise: ExerciseEntry? = nil
@@ -30,6 +35,8 @@ struct HealthTabView: View {
     @State private var healthKitWaterOz: Double = 0
     @State private var showWaterGoalCelebration = false
     @State private var displayedHealthDay = Calendar.current.startOfDay(for: Date())
+    @State private var todayHRVSDNN: Double = 0
+    @State private var previousNightSleepHours: Double = 0
     private var isPremium: Bool {
         storeManager.isPremium
     }
@@ -52,6 +59,19 @@ struct HealthTabView: View {
     private var todayExercises: [ExerciseEntry] {
         let today = Calendar.current.startOfDay(for: Date())
         return exerciseEntries.filter { $0.timestamp >= today }
+    }
+
+    private var todayNaps: [NapEntry] {
+        let today = Calendar.current.startOfDay(for: Date())
+        return napEntries.filter { $0.startDate >= today }
+    }
+
+    private var napCountToday: Int {
+        todayNaps.count
+    }
+
+    private var napMinutesToday: Int {
+        todayNaps.reduce(0) { $0 + $1.durationMinutes }
     }
 
     private var todayExerciseLogCount: Int {
@@ -143,6 +163,23 @@ struct HealthTabView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 16) {
 
+                        // MARK: Body & Emotional State card
+                        bodyEmotionalStateCard
+                            .padding(.horizontal, 16)
+
+                        // MARK: Sleep card
+                        SleepHealthCard(
+                            previousNightSleepHours: previousNightSleepHours,
+                            sleepGoalHours: currentGoals.sleepGoalHours,
+                            napCountToday: napCountToday,
+                            napMinutesToday: napMinutesToday,
+                            onNapHistory: {},
+                            onLogNap: {
+                                flash("Nap logged!")
+                            }
+                        )
+                        .padding(.horizontal, 16)
+
                         // MARK: Vitals card
                         vitalsCard
                             .padding(.horizontal, 16)
@@ -201,6 +238,7 @@ struct HealthTabView: View {
                     modelContext.insert(entry)
                     try? modelContext.save()
                     writeVitalsToHealthKit(entry)
+                    HealthKitManager.shared.saveVitalsWidgetSnapshot(from: entry)
                     _ = try? LunixiaPointsManager.awardVitalsLog(in: modelContext, id: entry.id.uuidString, at: entry.timestamp)
                     flash("Vitals logged!")
                 }
@@ -247,6 +285,10 @@ struct HealthTabView: View {
             GoalSheet(goals: currentGoals) {
                 ensureGoalsExist()
                 try? modelContext.save()
+                HealthKitManager.shared.saveHealthWidgetGoals(
+                    stepGoal: currentGoals.dailySteps,
+                    waterGoalOz: currentGoals.dailyWaterOz
+                )
                 flash("Goals saved!")
             }
         }
@@ -260,16 +302,154 @@ struct HealthTabView: View {
             ensureGoalsExist()
             resetDisplayedHealthTotalsIfNeeded()
             await refreshHealthKitTotals()
+            if let latest = vitalsEntries.first {
+                HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             resetDisplayedHealthTotalsIfNeeded()
             refreshHealthKitTotalsSoon()
+            if let latest = vitalsEntries.first {
+                HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
+            }
         }
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
             resetDisplayedHealthTotalsIfNeeded()
         }
         } // end NavigationStack
+    }
+
+    // MARK: - Body & Emotional State Card
+
+    private var bodyEmotionalStateCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                cardLabel(icon: "heartfill", text: "Body & Emotional State")
+
+                HStack(alignment: .top, spacing: 12) {
+                    stateRingTile(
+                        title: "Body State",
+                        state: bodyState.title,
+                        message: bodyState.message,
+                        progress: bodyState.progress
+                    )
+
+                    stateRingTile(
+                        title: "Emotional State",
+                        state: emotionalState.title,
+                        message: emotionalState.message,
+                        progress: emotionalState.progress
+                    )
+                }
+
+                Text(todayHRVSDNN > 0 ? "Based on today’s HRV rhythm." : "HRV will appear after HealthKit has a reading for today.")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary.opacity(0.55))
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    private var bodyState: HealthStateInfo {
+        stateInfo(
+            for: todayHRVSDNN,
+            labels: (
+                high: "Rested",
+                steady: "Steady",
+                soft: "Tender",
+                low: "Rest-Oriented",
+                waiting: "Waiting"
+            ),
+            messages: (
+                high: "Your body seems well-supported today.",
+                steady: "Your body looks fairly balanced right now.",
+                soft: "Your body may appreciate a gentler pace.",
+                low: "Your body may be asking for extra care today.",
+                waiting: "Waiting for today’s HRV reading."
+            )
+        )
+    }
+
+    private var emotionalState: HealthStateInfo {
+        stateInfo(
+            for: todayHRVSDNN,
+            labels: (
+                high: "Settled",
+                steady: "Balanced",
+                soft: "Sensitive",
+                low: "Soothe Mode",
+                waiting: "Waiting"
+            ),
+            messages: (
+                high: "Your system seems calm and grounded.",
+                steady: "Your emotional rhythm looks steady.",
+                soft: "You may be feeling things a little more deeply today.",
+                low: "A slower, kinder pace may feel supportive.",
+                waiting: "Waiting for today’s HRV reading."
+            )
+        )
+    }
+
+    private func stateInfo(
+        for hrv: Double,
+        labels: (high: String, steady: String, soft: String, low: String, waiting: String),
+        messages: (high: String, steady: String, soft: String, low: String, waiting: String)
+    ) -> HealthStateInfo {
+        guard hrv > 0 else {
+            return HealthStateInfo(title: labels.waiting, message: messages.waiting, progress: 0.18)
+        }
+
+        switch hrv {
+        case 70...:
+            return HealthStateInfo(title: labels.high, message: messages.high, progress: 0.92)
+        case 45..<70:
+            return HealthStateInfo(title: labels.steady, message: messages.steady, progress: 0.72)
+        case 25..<45:
+            return HealthStateInfo(title: labels.soft, message: messages.soft, progress: 0.48)
+        default:
+            return HealthStateInfo(title: labels.low, message: messages.low, progress: 0.28)
+        }
+    }
+
+    @ViewBuilder
+    private func stateRingTile(title: String, state: String, message: String, progress: Double) -> some View {
+        VStack(spacing: 8) {
+            DottedStateRing(progress: progress)
+                .frame(width: 58, height: 58)
+
+            VStack(spacing: 3) {
+                Text(title)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary)
+
+                Text(state)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(bodyEmotionMint)
+                    .shadow(color: bodyEmotionMint.opacity(0.35), radius: 5, y: 1)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text(message)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary.opacity(0.65))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 150)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LColors.glassSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(LColors.glassBorder.opacity(0.7), lineWidth: 1)
+        )
     }
 
     // MARK: - Vitals Card
@@ -437,98 +617,43 @@ struct HealthTabView: View {
                             .padding(.top, 4)
                     }
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(LColors.glassSurface2)
-                                .frame(height: 8)
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(LColors.accentGradient)
-                                .frame(width: geo.size.width * progress, height: 8)
-                        }
-                    }
-                    .frame(height: 8)
+                    DottedHorizontalProgressBar(progress: progress)
                 }
 
-                // Quick log buttons
-                LazyVGrid(
-                    columns: [
-                        GridItem(.adaptive(minimum: 104), spacing: 10)
-                    ],
-                    alignment: .leading,
-                    spacing: 10
-                ) {
-                    ForEach([8.0, 20.0], id: \.self) { oz in
-                        Button {
-                            let entry = WaterEntry(oz: oz)
-                            modelContext.insert(entry)
-                            try? modelContext.save()
-                            writeWaterToHealthKit(oz)
-                            checkWaterGoalCelebration(
-                                previousWaterOz: max(localWaterOz - oz, healthKitWaterOz),
-                                addedWaterOz: oz
-                            )
-                            refreshHealthKitTotalsSoon()
-                            _ = try? LunixiaPointsManager.awardWaterLog(in: modelContext, entryId: entry.id.uuidString)
-                            flash("\(Int(oz))oz logged!")
-                        } label: {
-                            Text("+\(Int(oz)) oz")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.85)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 9)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(LColors.accentGradient)
-                                )
+                // Custom water controls
+                HStack(spacing: 10) {
+                    if isInlineWaterAddActive {
+                        inlineWaterControl(
+                            text: $inlineWaterAddText,
+                            placeholder: "Add oz",
+                            icon: "addwavy",
+                            action: logInlineWaterAmount
+                        )
+                    } else {
+                        waterCustomButton(icon: "addwavy") {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                isInlineWaterAddActive = true
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
 
-                    Button {
-                        showWaterLog = true
-                    } label: {
-                        Text("+ Custom")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(LColors.textSecondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(LColors.glassSurface)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .strokeBorder(LColors.glassBorder, lineWidth: 1)
-                                    )
-                            )
+                    if isInlineWaterClearActive {
+                        inlineWaterControl(
+                            text: $inlineWaterClearText,
+                            placeholder: "Clear oz",
+                            icon: "minuswavy",
+                            action: clearInlineWaterAmount
+                        )
+                    } else {
+                        waterCustomButton(icon: "minuswavy") {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                isInlineWaterClearActive = true
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        showWaterClear = true
-                    } label: {
-                        Text("Clear Custom")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(LColors.textSecondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(LColors.glassSurface)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .strokeBorder(LColors.glassBorder, lineWidth: 1)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
                 }
+                .animation(.easeInOut(duration: 0.18), value: isInlineWaterAddActive)
+                .animation(.easeInOut(duration: 0.18), value: isInlineWaterClearActive)
             }
         }
     }
@@ -553,17 +678,7 @@ struct HealthTabView: View {
                             .padding(.top, 4)
                     }
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(LColors.glassSurface2)
-                                .frame(height: 8)
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(LColors.accentGradient)
-                                .frame(width: geo.size.width * progress, height: 8)
-                        }
-                    }
-                    .frame(height: 8)
+                    DottedHorizontalProgressBar(progress: progress)
 
                     Text(stepsSubtitle(steps: todaySteps, goal: currentGoals.dailySteps))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -626,6 +741,102 @@ struct HealthTabView: View {
     // MARK: - Helpers
 
     @ViewBuilder
+    private func DottedHorizontalProgressBar(progress: Double) -> some View {
+        let clampedProgress = min(max(progress, 0), 1)
+        let dotCount = 34
+        let activeDots = Int((clampedProgress * Double(dotCount)).rounded(.up))
+
+        HStack(spacing: 4) {
+            ForEach(0..<dotCount, id: \.self) { index in
+                let isActive = index < activeDots
+
+                Capsule(style: .continuous)
+                    .fill(
+                        isActive
+                        ? AnyShapeStyle(LColors.accentGradient)
+                        : AnyShapeStyle(LColors.glassSurface2)
+                    )
+                    .frame(height: 8)
+                    .frame(maxWidth: .infinity)
+                    .shadow(
+                        color: isActive ? LColors.gradientBlue.opacity(0.28) : .clear,
+                        radius: isActive ? 2 : 0
+                    )
+            }
+        }
+        .frame(height: 8)
+    }
+
+    @ViewBuilder
+    private func waterCustomButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+
+                Text("Custom")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(LColors.accentGradient)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func inlineWaterControl(
+        text: Binding<String>,
+        placeholder: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            TextField(placeholder, text: text)
+                .keyboardType(.decimalPad)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(LColors.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Button(action: action) {
+                Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(LColors.accentGradient)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(LColors.glassSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(LColors.glassBorder, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
     private func cardLabel(icon: String, text: String) -> some View {
         HStack(spacing: 9) {
             Image(icon)
@@ -686,18 +897,30 @@ struct HealthTabView: View {
         displayedHealthDay = today
         todaySteps = 0
         healthKitWaterOz = 0
+        todayHRVSDNN = 0
+        previousNightSleepHours = 0
     }
 
     private func refreshHealthKitTotals() async {
         async let steps = HealthKitManager.shared.fetchStepsToday()
         async let water = HealthKitManager.shared.fetchWaterToday()
+        async let hrv = HealthKitManager.shared.fetchHRVToday()
+        async let sleep = HealthKitManager.shared.fetchSleepLastNight()
 
-        let totals = await (steps, water)
+        let totals = await (steps, water, hrv, sleep)
 
         await MainActor.run {
             displayedHealthDay = Calendar.current.startOfDay(for: Date())
             todaySteps = totals.0
             healthKitWaterOz = totals.1
+            todayHRVSDNN = totals.2
+            previousNightSleepHours = totals.3
+
+            // Always write the correct goals into the widget snapshot
+            HealthKitManager.shared.saveHealthWidgetGoals(
+                stepGoal: currentGoals.dailySteps,
+                waterGoalOz: currentGoals.dailyWaterOz
+            )
 
             let dk = LunixiaPointsManager.dayKey()
 
@@ -713,6 +936,36 @@ struct HealthTabView: View {
                 _ = try? LunixiaPointsManager.awardStepGoal(in: modelContext, dayKey: dk)
             }
         }
+    }
+    
+    private func logInlineWaterAmount() {
+        guard let oz = Double(inlineWaterAddText), oz > 0 else { return }
+        let entry = WaterEntry(oz: oz)
+        modelContext.insert(entry)
+        try? modelContext.save()
+        writeWaterToHealthKit(oz)
+        checkWaterGoalCelebration(
+            previousWaterOz: max(localWaterOz - oz, healthKitWaterOz),
+            addedWaterOz: oz
+        )
+        refreshHealthKitTotalsSoon()
+        _ = try? LunixiaPointsManager.awardWaterLog(in: modelContext, entryId: entry.id.uuidString)
+        inlineWaterAddText = ""
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isInlineWaterAddActive = false
+        }
+        flash("\(Int(oz))oz logged!")
+    }
+
+    private func clearInlineWaterAmount() {
+        guard let oz = Double(inlineWaterClearText), oz > 0 else { return }
+        clearWaterAmount(oz)
+        refreshHealthKitTotalsSoon()
+        inlineWaterClearText = ""
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isInlineWaterClearActive = false
+        }
+        flash("\(Int(oz))oz cleared!")
     }
 
     private func checkWaterGoalCelebration(previousWaterOz: Double, addedWaterOz: Double) {
@@ -842,6 +1095,47 @@ struct HealthTabView: View {
         withAnimation { showBanner = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
             withAnimation { showBanner = false }
+        }
+    }
+}
+private let bodyEmotionMint = Color(red: 0.3176, green: 1.0, blue: 0.8902)
+
+private struct HealthStateInfo {
+    let title: String
+    let message: String
+    let progress: Double
+}
+
+private struct DottedStateRing: View {
+    let progress: Double
+
+    private let dotCount = 30
+    private let dotSize: CGFloat = 5.25
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let radius = (size / 2) - dotSize
+            let filledDots = Int((Double(dotCount) * min(max(progress, 0), 1)).rounded())
+
+            ZStack {
+                ForEach(0..<dotCount, id: \.self) { index in
+                    let angle = Double(index) / Double(dotCount) * 360 - 90
+                    let radians = angle * .pi / 180
+                    let x = cos(radians) * radius
+                    let y = sin(radians) * radius
+
+                    Circle()
+                        .fill(index < filledDots ? AnyShapeStyle(bodyEmotionMint) : AnyShapeStyle(LColors.glassSurface2))
+                        .frame(width: dotSize, height: dotSize)
+                        .position(x: size / 2 + x, y: size / 2 + y)
+                }
+
+                Circle()
+                    .fill(LColors.glassSurface.opacity(0.72))
+                    .frame(width: size * 0.58, height: size * 0.58)
+            }
+            .frame(width: size, height: size)
         }
     }
 }

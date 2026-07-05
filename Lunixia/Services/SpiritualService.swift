@@ -22,7 +22,7 @@ final class SpiritualService {
     static let shared = SpiritualService()
     private init() {}
 
-    private let baseURL = "https://lystaria-api.fly.dev/api/spiritual"
+    private let baseURL = "https://lystaria-api-production.up.railway.app/api/spiritual"
 
     // MARK: - Tarot
 

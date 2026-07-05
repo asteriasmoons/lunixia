@@ -131,6 +131,19 @@ struct NotesView: View {
             .overlay {
                 overlayContent
             }
+            .sheet(isPresented: $showingTabPopup) {
+                tabNameSheet
+            }
+            .sheet(item: $selectedNote) { note in
+                editorOverlay(for: note)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $viewingNote) { note in
+                viewerOverlay(for: note)
+                    .presentationDetents(viewerSheetDetents(for: note))
+                    .presentationDragIndicator(.visible)
+            }
             .onAppear {
                 ensureRootTabExists()
                 if selectedTab.isEmpty {
@@ -165,114 +178,213 @@ struct NotesView: View {
 
     @ViewBuilder
     private var overlayContent: some View {
-        if showingTabPopup {
-            tabNameOverlay
-        }
-
         if showDeleteTabConfirmation {
             deleteTabOverlay
         }
-
-        if let note = selectedNote {
-            editorOverlay(for: note)
-        } else if let note = viewingNote {
-            viewerOverlay(for: note)
-        }
     }
 
-    private var tabNameOverlay: some View {
-        LunixiaPopup(
-            onClose: closeTabPopup,
-            width: 520,
-            heightRatio: 0.70
-        ) {
-            HStack {
-                Text(tabPopupMode == .create ? "New Tab" : "Rename Tab")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Spacer()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 12) {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Tab Name")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(LColors.textSecondary)
-                        GlassTextField(
-                            placeholder: "Enter name",
-                            text: tabPopupMode == .create ? $newTabName : $renamedTabName
-                        )
-                        .focused($isTabFieldFocused)
+    private var tabNameSheet: some View {
+        NavigationStack {
+            ZStack {
+                LunixiaBackground()
+                    .ignoresSafeArea()
+
+                VStack(spacing: 18) {
+                    HStack(spacing: 10) {
+                        Image("addtab")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(LGradients.header)
+
+                        Text(tabPopupMode == .create ? "New Tab" : "Rename Tab")
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+
+                        Spacer()
+
+                        Button {
+                            closeTabPopup()
+                        } label: {
+                            Image("xmarkwavy")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .foregroundStyle(LGradients.header)
+                        }
+                        .buttonStyle(.plain)
                     }
-                }
-            }
-        } footer: {
-            HStack(spacing: 10) {
-                Spacer()
-                LButton(title: "Cancel", style: .secondary) {
-                    closeTabPopup()
-                }
-                LButton(title: "Save", style: .gradient) {
-                    if tabPopupMode == .create {
-                        createTab()
-                    } else {
-                        renameTab()
+
+                    GlassCard(padding: 16) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Tab Name")
+                                .font(.system(size: 13, weight: .black, design: .rounded))
+                                .foregroundStyle(LColors.textSecondary)
+
+                            GlassTextField(
+                                placeholder: "Enter name",
+                                text: tabPopupMode == .create ? $newTabName : $renamedTabName
+                            )
+                            .focused($isTabFieldFocused)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white.opacity(0.035))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                        }
                     }
-                    showingTabPopup = false
+
+                    HStack(spacing: 10) {
+                        LButton(title: "Cancel", style: .secondary) {
+                            closeTabPopup()
+                        }
+
+                        LButton(title: "Save", style: .gradient) {
+                            if tabPopupMode == .create {
+                                createTab()
+                            } else {
+                                renameTab()
+                            }
+                            showingTabPopup = false
+                        }
+                    }
+
+                    Spacer(minLength: 0)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        .presentationDetents([.height(260)])
+        .presentationDragIndicator(.visible)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                isTabFieldFocused = true
             }
         }
-        .ignoresSafeArea(.keyboard)
     }
 
     private var deleteTabOverlay: some View {
-        LunixiaPopup(
-            onClose: {
-                showDeleteTabConfirmation = false
-                tabPendingDeletion = ""
-            },
-            width: 620,
-            heightRatio: 0.75
-        ) {
-            HStack {
-                Text("Delete Tab")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Spacer()
-            }
-        } content: {
-            Text(deleteTabConfirmationMessage)
-                .font(.system(size: 14))
-                .foregroundStyle(LColors.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } footer: {
-            HStack(spacing: 10) {
-                Spacer()
-                LButton(title: "Cancel", style: .secondary) {
+        ZStack {
+            Color.black.opacity(0.36)
+                .ignoresSafeArea()
+                .onTapGesture {
                     showDeleteTabConfirmation = false
+                    tabPendingDeletion = ""
                 }
-                LButton(title: "Delete", style: .gradient) {
-                    deleteTab()
-                    showDeleteTabConfirmation = false
+
+            VStack(spacing: 16) {
+                VStack(spacing: 8) {
+                    Image("trash")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(LGradients.header)
+
+                    Text("Delete Tab")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(LColors.textPrimary)
+
+                    Text(deleteTabConfirmationMessage)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        showDeleteTabConfirmation = false
+                        tabPendingDeletion = ""
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundStyle(LColors.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(LColors.glassSurface)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .strokeBorder(LColors.glassBorder, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        deleteTab()
+                        showDeleteTabConfirmation = false
+                    } label: {
+                        Text("Delete")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(LColors.accentGradient)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(18)
+            .frame(width: 310)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(LColors.bg.opacity(0.96))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(LColors.glassBorder, lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.28), radius: 24, x: 0, y: 12)
         }
+        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        .zIndex(50)
     }
 
     private func editorOverlay(for note: Note) -> some View {
-        LunixiaColorPopup(
-            onClose: closeEditor,
-            width: 620,
-            heightRatio: 0.75,
-            noteColor: draftColor
-        ) {
-            popupHeader(for: note)
-        } content: {
-            popupContent
-        } footer: {
-            popupFooter(for: note)
+        NavigationStack {
+            ZStack {
+                draftColor
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    popupHeader(for: note)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 20)
+                        .padding(.bottom, 14)
+
+                    ScrollView(showsIndicators: false) {
+                        popupContent
+                            .padding(.horizontal, 22)
+                            .padding(.bottom, 18)
+                    }
+
+                    popupFooter(for: note)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 12)
+                        .padding(.bottom, 18)
+                }
+            }
+            .toolbar(.hidden, for: .navigationBar)
         }
+        .presentationBackground(draftColor)
         .modifier(
             LunixiaAlertConfirm(
                 isPresented: $showDeleteConfirmation,
@@ -287,21 +399,34 @@ struct NotesView: View {
     }
 
     private func viewerOverlay(for note: Note) -> some View {
-        LunixiaColorPopup(
-            onClose: closeViewer,
-            width: 520,
-            heightRatio: 0.62,
-            noteColor: color(from: note.colorHex),
-            header: {
-                viewerHeader(for: note)
-            },
-            content: {
-                viewerContent(for: note)
-            },
-            footer: {
-                viewerFooter(for: note)
+        let noteColor = color(from: note.colorHex)
+
+        return NavigationStack {
+            ZStack {
+                noteColor
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    viewerHeader(for: note)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 20)
+                        .padding(.bottom, 14)
+
+                    ScrollView(showsIndicators: false) {
+                        viewerContent(for: note)
+                            .padding(.horizontal, 22)
+                            .padding(.bottom, 12)
+                    }
+
+                    viewerFooter(for: note)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 12)
+                        .padding(.bottom, 18)
+                }
             }
-        )
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        .presentationBackground(noteColor)
         .modifier(
             LunixiaAlertConfirm(
                 isPresented: $showDeleteConfirmation,
@@ -327,7 +452,7 @@ struct NotesView: View {
     private var topPageBar: some View {
         HStack(alignment: .center) {
             Text("Notes")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundStyle(LGradients.header)
 
             Spacer()
@@ -342,7 +467,7 @@ struct NotesView: View {
                         showPremiumRequiredMessage("Premium unlocks more note tabs.")
                     }
                 } label: {
-                    Image("tabs")
+                    Image("addtab")
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
@@ -452,27 +577,47 @@ struct NotesView: View {
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
-                        Button(notesDefaultTab == tab ? "Default Tab ✓" : "Set as Default") {
+                        Button {
+                            moveTabLeft(tab)
+                        } label: {
+                            Label("Move Left", image: "chevleft")
+                        }
+                        .disabled(tab == notesTabs.first)
+
+                        Button {
+                            moveTabRight(tab)
+                        } label: {
+                            Label("Move Right", image: "chevright")
+                        }
+                        .disabled(tab == notesTabs.last)
+
+                        Divider()
+
+                        Button {
                             if let s = settings {
                                 s.notesDefaultTab = tab
                                 s.updatedAt = Date()
                                 try? modelContext.save()
                             }
+                        } label: {
+                            Label(notesDefaultTab == tab ? "Default Tab ✓" : "Set as Default", image: "starfill")
                         }
 
-                        Divider()
-
-                        Button("Rename") {
+                        Button {
                             renamingTabName = tab
                             renamedTabName = tab
                             tabPopupMode = .rename
                             showingTabPopup = true
+                        } label: {
+                            Label("Rename", image: "linespencil")
                         }
 
                         if tab != rootTabName || notesTabs.count > 1 {
-                            Button("Delete", role: .destructive) {
+                            Button(role: .destructive) {
                                 tabPendingDeletion = tab
                                 showDeleteTabConfirmation = true
+                            } label: {
+                                Label("Delete", image: "trash")
                             }
                         }
                     }
@@ -552,6 +697,9 @@ struct NotesView: View {
                             },
                             onMoveToTab: { tab in
                                 move(note, to: tab)
+                            },
+                            onDelete: {
+                                delete(note)
                             }
                         )
                     }
@@ -572,12 +720,12 @@ struct NotesView: View {
         }
     }
 
-    // MARK: - Popup
+    // MARK: - Note Sheets
 
     private func popupHeader(for note: Note) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Text("Note")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: 30, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
 
             Spacer()
@@ -611,7 +759,7 @@ struct NotesView: View {
     private func viewerHeader(for note: Note) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Text("Note")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: 30, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
 
             Spacer()
@@ -672,7 +820,7 @@ struct NotesView: View {
                 HStack(spacing: 8) {
                     ForEach(note.activeLabels, id: \.self) { label in
                         Text(label.uppercased())
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -687,71 +835,73 @@ struct NotesView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.top, 6)
+                .padding(.top, 2)
             }
         }
     }
 
     private func viewerFooter(for note: Note) -> some View {
-        HStack(spacing: 10) {
-            Button {
-                showDeleteConfirmation = true
-            } label: {
-                Text("Delete")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 11)
-                    .background(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .fill(Color.black.opacity(0.30))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .stroke(Color.white.opacity(0.26), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Button {
+                    showDeleteConfirmation = true
+                } label: {
+                    Text("Delete")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .fill(Color.black.opacity(0.30))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.26), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
 
-            Spacer()
+                Spacer()
 
-            Button {
-                closeViewer()
-            } label: {
-                Text("Close")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 11)
-                    .background(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .fill(Color.black.opacity(0.30))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .stroke(Color.white.opacity(0.26), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
+                Button {
+                    closeViewer()
+                } label: {
+                    Text("Close")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .fill(Color.black.opacity(0.30))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.26), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
 
-            Button {
-                startEditing(note)
-            } label: {
-                Text("Edit")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 11)
-                    .background(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .fill(Color.black.opacity(0.30))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
-                            .stroke(Color.white.opacity(0.26), lineWidth: 1)
-                    )
+                Button {
+                    startEditing(note)
+                } label: {
+                    Text("Edit")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .fill(Color.black.opacity(0.30))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.26), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -1188,6 +1338,42 @@ struct NotesView: View {
         if selectedTab == renamingTabName { selectedTab = trimmed }
         renamedTabName = ""; renamingTabName = ""
     }
+    
+    private func moveTabLeft(_ tabName: String) {
+        moveTab(tabName, direction: -1)
+    }
+
+    private func moveTabRight(_ tabName: String) {
+        moveTab(tabName, direction: 1)
+    }
+
+    private func moveTab(_ tabName: String, direction: Int) {
+        let orderedTabs = notesTabs
+        guard let currentIndex = orderedTabs.firstIndex(of: tabName) else { return }
+
+        let targetIndex = currentIndex + direction
+        guard orderedTabs.indices.contains(targetIndex) else { return }
+
+        let targetName = orderedTabs[targetIndex]
+
+        guard
+            let currentTab = tabModel(named: tabName),
+            let targetTab = tabModel(named: targetName)
+        else { return }
+
+        let currentDate = currentTab.createdAt
+        currentTab.createdAt = targetTab.createdAt
+        targetTab.createdAt = currentDate
+
+        currentTab.touch()
+        targetTab.touch()
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to reorder tabs: \(error)")
+        }
+    }
 
     private func deleteTab() {
         let currentRootTabName = self.rootTabName
@@ -1389,10 +1575,11 @@ private struct NoteStickyCard: View {
     @Binding var isCollapsed: Bool
     let action: () -> Void
     let onMoveToTab: (String) -> Void
-
+    let onDelete: () -> Void
+    
     private var cardHeight: CGFloat { note.isPinned && isCollapsed ? 96 : 190 }
     private var previewLineLimit: Int { note.isPinned && isCollapsed ? 3 : 8 }
-
+    
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .topLeading) {
@@ -1402,7 +1589,7 @@ private struct NoteStickyCard: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(Color.white.opacity(0.16), lineWidth: 1)
                     )
-
+                
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top, spacing: 8) {
                         HStack(spacing: 8) {
@@ -1428,9 +1615,9 @@ private struct NoteStickyCard: View {
                                     .foregroundStyle(.white).frame(width: 18, height: 18)
                             }
                         }
-
+                        
                         Spacer(minLength: 0)
-
+                        
                         VStack(alignment: .trailing, spacing: 5) {
                             if note.isPinned && !isCollapsed { stickyBadge(text: "PINNED") }
                             ForEach(displayedBadges, id: \.self) { badge in stickyBadge(text: badge) }
@@ -1438,7 +1625,7 @@ private struct NoteStickyCard: View {
                         .frame(maxWidth: 92, alignment: .trailing)
                         .layoutPriority(0)
                     }
-
+                    
                     Text(previewText)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.black.opacity(0.82))
@@ -1446,9 +1633,9 @@ private struct NoteStickyCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
                         .lineLimit(previewLineLimit)
-
+                    
                     Spacer(minLength: 0)
-
+                    
                     if !(note.isPinned && isCollapsed) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Created: \(shortDateTime(note.createdAt))")
@@ -1471,11 +1658,20 @@ private struct NoteStickyCard: View {
         .contextMenu {
             Menu("Move to Tab") {
                 ForEach(availableTabs, id: \.self) { tab in
-                    Button(tab) { onMoveToTab(tab) }
+                    Button(tab) {
+                        onMoveToTab(tab)
+                    }
                 }
+            }
+            
+            Divider()
+            
+            Button("Delete", role: .destructive) {
+                onDelete()
             }
         }
     }
+
 
     private var previewText: String {
         let cleaned = note.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1594,3 +1790,18 @@ struct NotesCursorAwareEditor: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) { parent.text = textView.text }
     }
 }
+
+    private func viewerSheetDetents(for note: Note) -> Set<PresentationDetent> {
+        let characterCount = note.trimmedContent.count
+        let labelCount = note.activeLabels.count
+
+        if characterCount <= 140 && labelCount <= 2 {
+            return [.height(520), .large]
+        }
+
+        if characterCount <= 360 {
+            return [.height(640), .large]
+        }
+
+        return [.large]
+    }

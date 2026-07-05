@@ -41,7 +41,7 @@ struct JournalIdentityHeaderView: View {
             // Title
             if !entry.title.isEmpty {
                 Text(entry.title)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 26, weight: .black, design: .rounded))
                     .foregroundStyle(resolvedTitleColor)
                     .lineSpacing(2)
                     .padding(.horizontal, 20)
@@ -90,15 +90,19 @@ struct JournalIdentityHeaderView: View {
                 .renderingMode(.template)
                 .scaledToFit()
                 .frame(width: 14, height: 14)
-                .foregroundStyle(.white)
+                .foregroundStyle(resolvedTitleColor)
+
             Text(tag)
                 .font(.system(size: 14, weight: .semibold))
-        }
-        .foregroundStyle(LColors.textPrimary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.08))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(LColors.glassBorder, lineWidth: 1))
+                .foregroundStyle(resolvedTitleColor)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.white.opacity(0.08))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(resolvedTitleColor.opacity(0.55), lineWidth: 1)
+            )
     }
 }

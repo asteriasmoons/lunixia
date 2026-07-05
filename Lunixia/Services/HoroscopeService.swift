@@ -16,7 +16,7 @@ final class HoroscopeService {
 
     private init() {}
 
-    private let baseURL = "https://lystaria-api.fly.dev"
+    private let baseURL = "https://lystaria-api-production.up.railway.app"
 
     private struct HoroscopeRequest: Codable {
         let sign: String
@@ -44,16 +44,25 @@ final class HoroscopeService {
             throw HoroscopeServiceError.invalidResponse
         }
 
+        let rawText = String(data: data, encoding: .utf8) ?? "Unable to decode response body"
+        print("[Horoscope] Status Code:", httpResponse.statusCode)
+        print("[Horoscope] Raw Response:", rawText)
+
         guard 200..<300 ~= httpResponse.statusCode else {
             let text = String(data: data, encoding: .utf8) ?? "Unknown server error"
             throw HoroscopeServiceError.serverError(text)
         }
 
-        let decoded = try JSONDecoder().decode(HoroscopeResponse.self, from: data)
+        do {
+            let decoded = try JSONDecoder().decode(HoroscopeResponse.self, from: data)
 
-        return DailyHoroscope(
-            sign: decoded.sign.capitalized,
-            message: decoded.message
-        )
+            return DailyHoroscope(
+                sign: decoded.sign.capitalized,
+                message: decoded.message
+            )
+        } catch {
+            print("[Horoscope] Decoding Error:", error)
+            throw error
+        }
     }
 }

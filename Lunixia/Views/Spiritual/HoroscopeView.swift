@@ -205,9 +205,7 @@ private extension HoroscopeView {
                         .foregroundStyle(.white)
                 }
 
-                Text(selectedSign.isEmpty ? "Select Zodiac Sign" : selectedSign)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                Text(selectedSign.isEmpty ? "Select Zodiac Sign" : selectedSign.capitalized)
 
                 Spacer()
 
@@ -273,14 +271,12 @@ private extension HoroscopeView {
                     .frame(width: 22, height: 22)
                     .foregroundStyle(.white)
 
-                Text(horoscope.sign)
-                    .font(.system(size: 20, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                Text(horoscope.sign.capitalized)
 
                 Spacer()
             }
 
-            Text(horoscope.message)
+            Text(horoscope.message.trimmingCharacters(in: .whitespacesAndNewlines))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(LColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

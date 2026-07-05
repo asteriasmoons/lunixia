@@ -23,7 +23,7 @@ struct ChatMessage: Identifiable, Equatable {
 final class MoodChatService {
 
     // Replace with your deployed lystaria-api base URL
-    private let baseURL = "https://lystaria-api.fly.dev/api/mood/chat"
+    private let baseURL = "https://lystaria-api-production.up.railway.app/api/mood/chat"
 
     func send(messages: [ChatMessage]) async throws -> String {
         guard let url = URL(string: baseURL) else {

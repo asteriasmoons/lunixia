@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct MoonPhaseData: Equatable {
+struct MoonPhaseData: Equatable, Codable {
     let date: Date
     let phaseName: String
     let signName: String

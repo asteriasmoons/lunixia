@@ -29,6 +29,7 @@ final class LunixiaMedication {
     // MARK: Core
     var id: UUID = UUID()
     var name: String = ""
+    var notes: String = ""
 
     // MARK: Supply
     var currentAmount: Int = 0
@@ -40,9 +41,17 @@ final class LunixiaMedication {
     var lastAutoRefillDayKey: String = ""
 
     // MARK: Dose Schedule
+    /// daily or weekly — stored as String for SwiftData/CloudKit safety.
+    var scheduleFrequencyRaw: String = LunixiaMedicationScheduleFrequency.daily.rawValue
+    /// Calendar weekday value, where Sunday = 1 and Saturday = 7. Used for weekly medications.
+    var weeklyWeekday: Int = 1
     var timesPerDay: Int = 1
     var doseScheduleJSON: String = ""
     var lastTakenAt: Date? = nil
+
+    // MARK: Auto Decrease
+    var autoDecreaseEnabled: Bool = false
+    var lastAutoDecreaseDayKey: String = ""
 
     // MARK: Dose Notifications
     var notifyDose: Bool = false
@@ -65,6 +74,22 @@ final class LunixiaMedication {
 
     @Relationship(deleteRule: .cascade, inverse: \LunixiaMedHistoryEntry.medication)
     var historyEntries: [LunixiaMedHistoryEntry]? = []
+
+    // MARK: - Computed: schedule frequency
+
+    enum LunixiaMedicationScheduleFrequency: String, Codable, CaseIterable {
+        case daily
+        case weekly
+    }
+
+    var scheduleFrequency: LunixiaMedicationScheduleFrequency {
+        get { LunixiaMedicationScheduleFrequency(rawValue: scheduleFrequencyRaw) ?? .daily }
+        set { scheduleFrequencyRaw = newValue.rawValue }
+    }
+
+    var isWeekly: Bool {
+        scheduleFrequency == .weekly
+    }
 
     // MARK: - Computed: dose schedule overrides
 
@@ -91,7 +116,16 @@ final class LunixiaMedication {
     }
 
     func doses(forWeekday weekday: Int) -> Int {
-        doseScheduleOverrides[weekday] ?? timesPerDay
+        let cleanWeekday = min(max(weekday, 1), 7)
+        let overrides = doseScheduleOverrides
+
+        switch scheduleFrequency {
+        case .daily:
+            return max(0, overrides[cleanWeekday] ?? timesPerDay)
+        case .weekly:
+            guard cleanWeekday == weeklyWeekday else { return 0 }
+            return max(0, overrides[cleanWeekday] ?? timesPerDay)
+        }
     }
 
     var dosesToday: Int {
@@ -126,12 +160,16 @@ final class LunixiaMedication {
 
     init(
         name: String,
+        notes: String = "",
         currentAmount: Int,
         supplyAmount: Int,
         daysSupply: Int = 0,
         refillDate: Date? = nil,
+        scheduleFrequency: LunixiaMedicationScheduleFrequency = .daily,
+        weeklyWeekday: Int = 1,
         timesPerDay: Int = 1,
         doseScheduleOverrides: [Int: Int] = [:],
+        autoDecreaseEnabled: Bool = false,
         notifyDose: Bool = false,
         doseNotifyTimes: [DoseNotifyTime] = [DoseNotifyTime(hour: 9, minute: 0)],
         notifyRefill: Bool = false,
@@ -139,13 +177,18 @@ final class LunixiaMedication {
     ) {
         self.id = UUID()
         self.name = name
+        self.notes = notes
         self.currentAmount = currentAmount
         self.supplyAmount = supplyAmount
         self.daysSupply = daysSupply
         self.refillDate = refillDate
         self.lastAutoRefillDayKey = ""
+        self.scheduleFrequencyRaw = scheduleFrequency.rawValue
+        self.weeklyWeekday = min(max(weeklyWeekday, 1), 7)
         self.timesPerDay = timesPerDay
         self.lastTakenAt = nil
+        self.autoDecreaseEnabled = autoDecreaseEnabled
+        self.lastAutoDecreaseDayKey = ""
         self.notifyDose = notifyDose
         self.doseNotifyHour = doseNotifyTimes.first?.hour ?? 9
         self.doseNotifyMinute = doseNotifyTimes.first?.minute ?? 0

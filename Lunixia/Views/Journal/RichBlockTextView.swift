@@ -16,7 +16,7 @@ struct RichBlockTextView: UIViewRepresentable {
     var onMentionTapped: ((String) -> Void)? = nil
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = JournalPreviewTextView()
         textView.backgroundColor = .clear
         textView.isEditable = false
         textView.isScrollEnabled = false
@@ -116,6 +116,16 @@ struct RichBlockTextView: UIViewRepresentable {
             ) as? String {
                 onMentionTapped(mentionID)
             }
+        }
+    }
+
+    final class JournalPreviewTextView: UITextView {
+        override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            if let pan = gestureRecognizer as? UIPanGestureRecognizer {
+                let velocity = pan.velocity(in: self)
+                if abs(velocity.y) > abs(velocity.x) * 2 { return false }
+            }
+            return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
     }
 }

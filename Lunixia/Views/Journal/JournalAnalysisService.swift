@@ -20,6 +20,7 @@ private struct JournalAnalysisRequest: Encodable {
     }
     let userId: String
     let bookId: String
+    let dateKey: String
     let entries: [EntryPayload]
 }
 
@@ -28,7 +29,7 @@ final class JournalAnalysisService {
     static let shared = JournalAnalysisService()
     private init() {}
 
-    private let baseURL = "https://lystaria-api.fly.dev"
+    private let baseURL = "https://lystaria-api-production.up.railway.app"
 
     func fetchAnalysis(userId: String, bookId: String, dateKey: String) async throws -> JournalAnalysisResponse? {
         guard var components = URLComponents(string: "\(baseURL)/api/journal/analyze") else {
@@ -49,6 +50,9 @@ final class JournalAnalysisService {
         request.httpMethod = "GET"
 
         let (data, response) = try await URLSession.shared.data(for: request)
+        print("JournalAnalysis URL:", request.url?.absoluteString ?? "nil")
+        print("JournalAnalysis status:", (response as? HTTPURLResponse)?.statusCode ?? -1)
+        print("JournalAnalysis body:", String(data: data, encoding: .utf8) ?? "nil")
 
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
@@ -90,6 +94,9 @@ final class JournalAnalysisService {
         request.httpMethod = "GET"
 
         let (data, response) = try await URLSession.shared.data(for: request)
+        print("JournalAnalysis URL:", request.url?.absoluteString ?? "nil")
+        print("JournalAnalysis status:", (response as? HTTPURLResponse)?.statusCode ?? -1)
+        print("JournalAnalysis body:", String(data: data, encoding: .utf8) ?? "nil")
 
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
@@ -127,6 +134,10 @@ final class JournalAnalysisService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
+        print("JournalAnalysis URL:", request.url?.absoluteString ?? "nil")
+        print("JournalAnalysis status:", (response as? HTTPURLResponse)?.statusCode ?? -1)
+        print("JournalAnalysis body:", String(data: data, encoding: .utf8) ?? "nil")
+
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
@@ -152,6 +163,7 @@ final class JournalAnalysisService {
     func analyze(
         userId: String,
         bookId: String,
+        dateKey: String,
         entries: [JournalEntry]
     ) async throws -> JournalAnalysisResponse {
         guard !entries.isEmpty else {
@@ -180,25 +192,37 @@ final class JournalAnalysisService {
             )
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: 90)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(
-            JournalAnalysisRequest(userId: userId, bookId: bookId, entries: payloads)
+            JournalAnalysisRequest(userId: userId, bookId: bookId, dateKey: dateKey, entries: payloads)
         )
 
         let (data, response) = try await URLSession.shared.data(for: request)
+        print("JournalAnalysis URL:", request.url?.absoluteString ?? "nil")
+        print("JournalAnalysis status:", (response as? HTTPURLResponse)?.statusCode ?? -1)
+        print("JournalAnalysis body:", String(data: data, encoding: .utf8) ?? "nil")
 
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
 
         guard http.statusCode == 200 else {
-            let text = String(data: data, encoding: .utf8) ?? "Unknown error"
+            // Prefer the server's own error message; fall back to the raw body
+            let body = String(data: data, encoding: .utf8) ?? ""
+            let serverMessage: String = {
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let msg = json["error"] as? String ?? json["message"] as? String,
+                   !msg.isEmpty {
+                    return msg
+                }
+                return body.isEmpty ? "Server returned status \(http.statusCode)" : body
+            }()
             throw NSError(
                 domain: "JournalAnalysisService",
                 code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: text]
+                userInfo: [NSLocalizedDescriptionKey: serverMessage]
             )
         }
 

@@ -11,6 +11,9 @@
 		CFBD99C92FC86C63003F1EAC /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */; };
 		CFBD99D12FC86C63003F1EAC /* LunixiaMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CFBD99E72FC86CB8003F1EAC /* LunixiaReport.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CFF2EBEB2FD1137700998C40 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFF2EBEA2FD1137600998C40 /* WidgetKit.framework */; };
+		CFF2EBED2FD1137700998C40 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFF2EBEC2FD1137700998C40 /* SwiftUI.framework */; };
+		CFF2EBFE2FD1137900998C40 /* LunixiaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFF2EBE92FD1137600998C40 /* LunixiaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +31,13 @@
 			remoteGlobalIDString = CFBD99DA2FC86CB8003F1EAC;
 			remoteInfo = LunixiaReport;
 		};
+		CFF2EBFC2FD1137900998C40 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CFBD95E42FBE068A003F1EAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CFF2EBE82FD1137600998C40;
+			remoteInfo = LunixiaWidgetsExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -38,6 +48,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				CFBD99D12FC86C63003F1EAC /* LunixiaMonitor.appex in Embed Foundation Extensions */,
+				CFF2EBFE2FD1137900998C40 /* LunixiaWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,6 +72,10 @@
 		CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LunixiaMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
 		CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = LunixiaReport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFF2EBE92FD1137600998C40 /* LunixiaWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LunixiaWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFF2EBEA2FD1137600998C40 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		CFF2EBEC2FD1137700998C40 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		CFF2EC032FD11B8600998C40 /* LunixiaWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LunixiaWidgetsExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -85,6 +100,24 @@
 			);
 			target = CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */;
 		};
+		CFF2EC022FD1137900998C40 /* Exceptions for "LunixiaWidgets" folder in "LunixiaWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CFF2EBE82FD1137600998C40 /* LunixiaWidgetsExtension */;
+		};
+		CFF2EC052FD11DD800998C40 /* Exceptions for "Lunixia" folder in "LunixiaWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/MoonPhaseData.swift,
+				Theme/LunixiaComponents.swift,
+				Theme/Theme.swift,
+				Utilities/MoonPhaseCalculator.swift,
+				Utilities/MoonPhaseDetailData.swift,
+			);
+			target = CFF2EBE82FD1137600998C40 /* LunixiaWidgetsExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -92,6 +125,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				CFBD95F92FBE068C003F1EAC /* Exceptions for "Lunixia" folder in "Lunixia" target */,
+				CFF2EC052FD11DD800998C40 /* Exceptions for "Lunixia" folder in "LunixiaWidgetsExtension" target */,
 			);
 			path = Lunixia;
 			sourceTree = "<group>";
@@ -110,6 +144,14 @@
 				CFBD99EB2FC86CB8003F1EAC /* Exceptions for "LunixiaReport" folder in "LunixiaReport" target */,
 			);
 			path = LunixiaReport;
+			sourceTree = "<group>";
+		};
+		CFF2EBEE2FD1137700998C40 /* LunixiaWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CFF2EC022FD1137900998C40 /* Exceptions for "LunixiaWidgets" folder in "LunixiaWidgetsExtension" target */,
+			);
+			path = LunixiaWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -138,15 +180,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CFF2EBE62FD1137600998C40 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFF2EBED2FD1137700998C40 /* SwiftUI.framework in Frameworks */,
+				CFF2EBEB2FD1137700998C40 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		CFBD95E32FBE068A003F1EAC = {
 			isa = PBXGroup;
 			children = (
+				CFF2EC032FD11B8600998C40 /* LunixiaWidgetsExtension.entitlements */,
 				CFBD95EE2FBE068A003F1EAC /* Lunixia */,
 				CFBD99CA2FC86C63003F1EAC /* LunixiaMonitor */,
 				CFBD99DC2FC86CB8003F1EAC /* LunixiaReport */,
+				CFF2EBEE2FD1137700998C40 /* LunixiaWidgets */,
 				CFBD97F92FC3CD13003F1EAC /* Frameworks */,
 				CFBD95ED2FBE068A003F1EAC /* Products */,
 			);
@@ -158,6 +211,7 @@
 				CFBD95EC2FBE068A003F1EAC /* Lunixia.app */,
 				CFBD99C72FC86C63003F1EAC /* LunixiaMonitor.appex */,
 				CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */,
+				CFF2EBE92FD1137600998C40 /* LunixiaWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -167,6 +221,8 @@
 			children = (
 				CFBD97FA2FC3CD13003F1EAC /* StoreKit.framework */,
 				CFBD99C82FC86C63003F1EAC /* DeviceActivity.framework */,
+				CFF2EBEA2FD1137600998C40 /* WidgetKit.framework */,
+				CFF2EBEC2FD1137700998C40 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -189,6 +245,7 @@
 			dependencies = (
 				CFBD99D02FC86C63003F1EAC /* PBXTargetDependency */,
 				CFBD99E62FC86CB8003F1EAC /* PBXTargetDependency */,
+				CFF2EBFD2FD1137900998C40 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CFBD95EE2FBE068A003F1EAC /* Lunixia */,
@@ -244,6 +301,28 @@
 			productReference = CFBD99DB2FC86CB8003F1EAC /* LunixiaReport.appex */;
 			productType = "com.apple.product-type.extensionkit-extension";
 		};
+		CFF2EBE82FD1137600998C40 /* LunixiaWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFF2EC012FD1137900998C40 /* Build configuration list for PBXNativeTarget "LunixiaWidgetsExtension" */;
+			buildPhases = (
+				CFF2EBE52FD1137600998C40 /* Sources */,
+				CFF2EBE62FD1137600998C40 /* Frameworks */,
+				CFF2EBE72FD1137600998C40 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CFF2EBEE2FD1137700998C40 /* LunixiaWidgets */,
+			);
+			name = LunixiaWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = LunixiaWidgetsExtension;
+			productReference = CFF2EBE92FD1137600998C40 /* LunixiaWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -261,6 +340,9 @@
 						CreatedOnToolsVersion = 26.5;
 					};
 					CFBD99DA2FC86CB8003F1EAC = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					CFF2EBE82FD1137600998C40 = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -282,6 +364,7 @@
 				CFBD95EB2FBE068A003F1EAC /* Lunixia */,
 				CFBD99C62FC86C63003F1EAC /* LunixiaMonitor */,
 				CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */,
+				CFF2EBE82FD1137600998C40 /* LunixiaWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -302,6 +385,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CFBD99D92FC86CB8003F1EAC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFF2EBE72FD1137600998C40 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -332,6 +422,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CFF2EBE52FD1137600998C40 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -344,6 +441,11 @@
 			isa = PBXTargetDependency;
 			target = CFBD99DA2FC86CB8003F1EAC /* LunixiaReport */;
 			targetProxy = CFBD99E52FC86CB8003F1EAC /* PBXContainerItemProxy */;
+		};
+		CFF2EBFD2FD1137900998C40 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CFF2EBE82FD1137600998C40 /* LunixiaWidgetsExtension */;
+			targetProxy = CFF2EBFC2FD1137900998C40 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -667,6 +769,68 @@
 			};
 			name = Release;
 		};
+		CFF2EBFF2FD1137900998C40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = LunixiaWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CFF2EC002FD1137900998C40 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = LunixiaWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PLRRW8XCVU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LunixiaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LunixiaWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = im.lystaria.Lunixia.LunixiaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -702,6 +866,15 @@
 			buildConfigurations = (
 				CFBD99E92FC86CB8003F1EAC /* Debug */,
 				CFBD99EA2FC86CB8003F1EAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFF2EC012FD1137900998C40 /* Build configuration list for PBXNativeTarget "LunixiaWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFF2EBFF2FD1137900998C40 /* Debug */,
+				CFF2EC002FD1137900998C40 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

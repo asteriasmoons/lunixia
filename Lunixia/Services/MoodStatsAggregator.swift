@@ -20,6 +20,27 @@ struct MoodStatsMoodInput {
     var moodScore: Double
 }
 
+struct SharedMoodPhoneStatsSnapshot: Codable {
+    let date: Date
+    let screenTimeMinutes: Double
+    let socialAppMinutes: Double
+    let nighttimePhoneMinutes: Double
+    let pickupCount: Int
+    let notificationCount: Int
+}
+
+enum MoodStatsSharedStore {
+    static let appGroupIdentifier = "group.com.asteriasmoons.Lunixia"
+    static let latestSnapshotKey = "lunixia.moodStats.latestSnapshot"
+
+    static func latestSnapshot() -> SharedMoodPhoneStatsSnapshot? {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else { return nil }
+        defaults.synchronize()
+        guard let data = defaults.data(forKey: latestSnapshotKey) else { return nil }
+        return try? JSONDecoder().decode(SharedMoodPhoneStatsSnapshot.self, from: data)
+    }
+}
+
 @MainActor
 final class MoodStatsAggregator {
 

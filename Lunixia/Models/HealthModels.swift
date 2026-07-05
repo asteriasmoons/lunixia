@@ -80,10 +80,16 @@ final class HealthGoals {
     var id: UUID = UUID()
     var dailyWaterOz: Double = 64.0
     var dailySteps: Int = 10000
+    var sleepGoalHours: Double = 8.0
 
-    init(dailyWaterOz: Double = 64.0, dailySteps: Int = 10000) {
+    init(
+        dailyWaterOz: Double = 64.0,
+        dailySteps: Int = 10000,
+        sleepGoalHours: Double = 8.0
+    ) {
         self.id = UUID()
         self.dailyWaterOz = dailyWaterOz
         self.dailySteps = dailySteps
+        self.sleepGoalHours = sleepGoalHours
     }
 }

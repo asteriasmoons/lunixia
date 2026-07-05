@@ -185,6 +185,10 @@ struct SelfCarePointsView: View {
                                 pinkDivider
                                 earnRow(label: "Mood Log",           assetIcon: "xsmile",    sfIcon: nil,              points: LunixiaPointsManager.moodLogPoints)
                                 pinkDivider
+                                earnRow(label: "Daily Tarot",        assetIcon: "crystalball", sfIcon: nil,            points: LunixiaPointsManager.dailyTarotPoints)
+                                pinkDivider
+                                earnRow(label: "Daily Lenormand",     assetIcon: "wand",     sfIcon: nil,              points: LunixiaPointsManager.dailyLenormandPoints)
+                                pinkDivider
                                 earnRow(label: "Vitals Log",         assetIcon: "scope",     sfIcon: nil,              points: LunixiaPointsManager.vitalsLogPoints)
                                 pinkDivider
                                 earnRow(label: "Exercise Log",       assetIcon: "dumbbell",  sfIcon: nil,              points: LunixiaPointsManager.exerciseLogPoints)
@@ -377,6 +381,14 @@ struct SelfCarePointsView: View {
                 .frame(width: 16, height: 16)
         case .moodLog:
             Image("xsmile")
+                .renderingMode(.template).resizable().scaledToFit()
+                .frame(width: 16, height: 16)
+        case .dailyTarot:
+            Image("crystalball")
+                .renderingMode(.template).resizable().scaledToFit()
+                .frame(width: 16, height: 16)
+        case .dailyLenormand:
+            Image("wand")
                 .renderingMode(.template).resizable().scaledToFit()
                 .frame(width: 16, height: 16)
         case .vitalsLog:

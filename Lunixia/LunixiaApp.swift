@@ -10,9 +10,10 @@ import SwiftData
 struct LunixiaApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var storeManager = LunixiaStoreManager()
-    var sharedModelContainer: ModelContainer = {
+    static var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            NapEntry.self,
             MoodEntry.self,
             VitalsEntry.self,
             ExerciseEntry.self,
@@ -42,6 +43,7 @@ struct LunixiaApp: App {
             LunixiaPointsProfile.self,
             LunixiaPointsResetLog.self,
             MoodChatSession.self,
+            MoodPhoneStatsSnapshot.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -59,10 +61,11 @@ struct LunixiaApp: App {
                 .environmentObject(storeManager)
                 .task {
                     await MainActor.run {
-                        LunixiaPointsManager.scheduleWeeklyReset(modelContainer: sharedModelContainer)
+                        LunixiaPointsManager.scheduleWeeklyReset(modelContainer: LunixiaApp.sharedModelContainer)
                     }
+                    LunixiaMoonPhaseWidgetWriter.write()
                 }
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(LunixiaApp.sharedModelContainer)
     }
 }

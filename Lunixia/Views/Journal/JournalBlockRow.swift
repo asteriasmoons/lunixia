@@ -27,6 +27,7 @@ struct JournalBlockRow: View {
     var onDeleteSelectedBlocks: () -> Void = {}
     var onIndentSelectedBlocksIn: () -> Void = {}
     var onIndentSelectedBlocksOut: () -> Void = {}
+    var onTextHeightIncrease: (JournalBlock) -> Void = { _ in }
     var journalTextColor: UIColor = UIColor(LColors.textPrimary)
 
     @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
@@ -623,7 +624,8 @@ struct JournalBlockRow: View {
                         onCreateParagraphBelow: { suffix in onAddBelow(block, .paragraph, suffix) },
                         onCreateTypedBlockBelow: { type, text in onAddBelow(block, type, text) },
                         onMergeWithPrevious: { mergeWithPreviousBlock(block) },
-                        onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil
+                        onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil,
+                        onContentHeightIncrease: { onTextHeightIncrease(block) }
                     )
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
@@ -665,7 +667,8 @@ struct JournalBlockRow: View {
                             onCreateTypedBlockBelow: { type, text in onAddBelow(block, type, text) },
                             onMergeWithPrevious: { mergeWithPreviousBlock(block) },
                             onDeleteEmptyBlock: { onDelete(block) },
-                            onExitList: { onAddBelow(block, .paragraph, ""); onDelete(block) }
+                            onExitList: { onAddBelow(block, .paragraph, ""); onDelete(block) },
+                            onContentHeightIncrease: { onTextHeightIncrease(block) }
                         )
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -683,7 +686,8 @@ struct JournalBlockRow: View {
                         onCreateParagraphBelow: { suffix in onAddBelow(block, .paragraph, suffix) },
                         onCreateTypedBlockBelow: { type, text in onAddBelow(block, type, text) },
                         onMergeWithPrevious: { mergeWithPreviousBlock(block) },
-                        onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil
+                        onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil,
+                        onContentHeightIncrease: { onTextHeightIncrease(block) }
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -712,7 +716,8 @@ struct JournalBlockRow: View {
                 onCreateParagraphBelow: { suffix in onAddBelow(block, .paragraph, suffix) },
                 onCreateTypedBlockBelow: { type, text in onAddBelow(block, type, text) },
                 onMergeWithPrevious: { mergeWithPreviousBlock(block) },
-                onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil
+                onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil,
+                onContentHeightIncrease: { onTextHeightIncrease(block) }
             )
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         }
@@ -842,7 +847,8 @@ struct JournalBlockRow: View {
                     onCreateParagraphBelow: { suffix in onAddBelow(block, .paragraph, suffix) },
                     onCreateTypedBlockBelow: { type, text in onAddBelow(block, type, text) },
                     onMergeWithPrevious: { mergeWithPreviousBlock(block) },
-                    onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil
+                    onDeleteEmptyBlock: { onDelete(block) }, onExitList: nil,
+                    onContentHeightIncrease: { onTextHeightIncrease(block) }
                 )
                 .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
                 .padding(.leading, 12)
@@ -1490,6 +1496,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
     var onMergeWithPrevious: (() -> Bool)? = nil
     let onDeleteEmptyBlock: (() -> Void)?
     let onExitList: (() -> Void)?
+    var onContentHeightIncrease: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -1567,12 +1574,14 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
         context.coordinator.onMergeWithPrevious = self.onMergeWithPrevious
         context.coordinator.onDeleteEmptyBlock = self.onDeleteEmptyBlock
         context.coordinator.onExitList = self.onExitList
+        context.coordinator.onContentHeightIncrease = self.onContentHeightIncrease
 
         let currentPlainText = uiView.text ?? ""
         let storedPlainText = block.text
         let shouldApplyProgrammaticTextUpdate = currentPlainText != storedPlainText
+        let canApplyProgrammaticTextUpdate = !(uiView.isFirstResponder && uiView.markedTextRange != nil)
 
-        if shouldApplyProgrammaticTextUpdate {
+        if shouldApplyProgrammaticTextUpdate && canApplyProgrammaticTextUpdate {
             let attributed = buildAttributedText()
             let priorSelection = uiView.selectedRange
 
@@ -1585,6 +1594,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
             uiView.selectedRange = NSRange(location: maxLocation, length: maxLength)
             context.coordinator.isApplyingProgrammaticChange = false
             uiView.invalidateIntrinsicContentSize()
+            context.coordinator.recordMeasuredHeight(uiView)
         } else if !uiView.isFirstResponder {
             let attributed = buildAttributedText()
             if uiView.attributedText != attributed {
@@ -1599,9 +1609,28 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
                 uiView.selectedRange = NSRange(location: maxLocation, length: maxLength)
                 context.coordinator.isApplyingProgrammaticChange = false
                 uiView.invalidateIntrinsicContentSize()
+                context.coordinator.recordMeasuredHeight(uiView)
             }
         } else {
-            uiView.typingAttributes = baseAttributes()
+            let attributed = buildAttributedText()
+
+            if uiView.markedTextRange == nil && uiView.attributedText != attributed {
+                let priorSelection = uiView.selectedRange
+
+                context.coordinator.isApplyingProgrammaticChange = true
+                uiView.attributedText = attributed
+                uiView.typingAttributes = baseAttributes()
+
+                let maxLocation = max(0, min(priorSelection.location, attributed.length))
+                let maxLength = max(0, min(priorSelection.length, attributed.length - maxLocation))
+                uiView.selectedRange = NSRange(location: maxLocation, length: maxLength)
+
+                context.coordinator.isApplyingProgrammaticChange = false
+                uiView.invalidateIntrinsicContentSize()
+                context.coordinator.recordMeasuredHeight(uiView)
+            } else {
+                uiView.typingAttributes = baseAttributes()
+            }
         }
 
         if let pv = uiView as? JournalPlaceholderTextView {
@@ -1724,7 +1753,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
         override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
             if let pan = gestureRecognizer as? UIPanGestureRecognizer {
                 let velocity = pan.velocity(in: self)
-                if abs(velocity.y) > abs(velocity.x) * 2 && !isFirstResponder { return false }
+                if abs(velocity.y) > abs(velocity.x) * 2 { return false }
             }
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
@@ -1740,6 +1769,9 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
         var onMergeWithPrevious: (() -> Bool)?
         var onDeleteEmptyBlock: (() -> Void)?
         var onExitList: (() -> Void)?
+        var onContentHeightIncrease: (() -> Void)?
+        private var lastMeasuredHeight: CGFloat?
+        private var pendingHeightIncreaseWorkItem: DispatchWorkItem?
 
         init(parent: JournalRichEditableBlockTextView) {
             self.parent = parent
@@ -1748,6 +1780,15 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
             self.onMergeWithPrevious = parent.onMergeWithPrevious
             self.onDeleteEmptyBlock = parent.onDeleteEmptyBlock
             self.onExitList = parent.onExitList
+            self.onContentHeightIncrease = parent.onContentHeightIncrease
+        }
+
+        deinit {
+            pendingHeightIncreaseWorkItem?.cancel()
+        }
+
+        func recordMeasuredHeight(_ textView: UITextView) {
+            lastMeasuredHeight = measuredHeight(in: textView)
         }
 
         func addTypedBlockFromKeyboardToolbar(_ type: JournalBlockType) {
@@ -1770,11 +1811,6 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingProgrammaticChange else { return }
             parent.selectedRange = textView.selectedRange
-            guard textView.isFirstResponder else { return }
-            NotificationCenter.default.post(
-                name: .journalBlockDidFocus,
-                object: parent.block.id
-            )
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -2042,6 +2078,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             if let pv = textView as? JournalPlaceholderTextView { pv.placeholderLabel.isHidden = true }
+            recordMeasuredHeight(textView)
             NotificationCenter.default.post(name: .journalBlockDidFocus, object: parent.block.id)
         }
 
@@ -2055,7 +2092,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
             }
             if let pv = textView as? JournalPlaceholderTextView { pv.placeholderLabel.isHidden = !newText.isEmpty }
 
-            if parent.isCodeBlock {
+            if parent.isCodeBlock && textView.markedTextRange == nil {
                 let highlighted = CodeHighlighter.highlight(newText, language: parent.codeLanguage, theme: parent.codeTheme)
                 let cursor = textView.selectedRange
                 isApplyingProgrammaticChange = true
@@ -2065,6 +2102,7 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
                 isApplyingProgrammaticChange = false
                 textView.invalidateIntrinsicContentSize()
             }
+            notifyIfHeightIncreasedNearEnd(textView, currentText: newText)
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
@@ -2081,6 +2119,40 @@ struct JournalRichEditableBlockTextView: UIViewRepresentable {
             if let pv = textView as? JournalPlaceholderTextView {
                 pv.placeholderLabel.isHidden = !parent.block.text.isEmpty
             }
+            pendingHeightIncreaseWorkItem?.cancel()
+            pendingHeightIncreaseWorkItem = nil
+            lastMeasuredHeight = nil
+        }
+
+        private func measuredHeight(in textView: UITextView) -> CGFloat {
+            let width = textView.bounds.width.isFinite && textView.bounds.width > 0
+                ? textView.bounds.width
+                : max(1, UIScreen.main.bounds.width)
+            let size = textView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+            return size.height.isFinite ? size.height : 0
+        }
+
+        private func notifyIfHeightIncreasedNearEnd(_ textView: UITextView, currentText: String) {
+            let currentHeight = measuredHeight(in: textView)
+            defer { lastMeasuredHeight = currentHeight }
+
+            guard textView.isFirstResponder,
+                  let previousHeight = lastMeasuredHeight,
+                  currentHeight > previousHeight + 1,
+                  isCaretNearEnd(of: currentText, in: textView) else { return }
+
+            pendingHeightIncreaseWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.onContentHeightIncrease?()
+            }
+            pendingHeightIncreaseWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
+        }
+
+        private func isCaretNearEnd(of text: String, in textView: UITextView) -> Bool {
+            let textLength = (text as NSString).length
+            let selectionEnd = textView.selectedRange.location + textView.selectedRange.length
+            return selectionEnd >= max(0, textLength - 1)
         }
     }
 }

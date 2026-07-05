@@ -113,6 +113,9 @@ struct VitalsLogSheet: View {
                 .padding(.bottom, 36)
             }
         }
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 
     @ViewBuilder

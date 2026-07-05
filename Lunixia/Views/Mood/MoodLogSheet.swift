@@ -18,7 +18,6 @@ struct MoodLogSheet: View {
     @State private var note: String = ""
 
     private let hk = HealthKitManager.shared
-    private let wk = WeatherKitManager.shared
 
     let todayMoodLogCount: Int
     let onPremiumRequired: () -> Void
@@ -214,11 +213,12 @@ struct MoodLogSheet: View {
                 .padding(.bottom, 36)
             }
         }
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .task {
             await hk.requestAuthorization()
-            async let health: () = hk.fetchAll()
-            async let weather: () = wk.fetchWeather()
-            _ = await (health, weather)
+            await hk.fetchAll()
         }
     }
 
@@ -346,13 +346,6 @@ struct MoodLogSheet: View {
             return
         }
 
-        if wk.weatherNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            print("[MoodLogSheet] weatherNote empty before save; fetching weather now")
-            await wk.fetchWeather()
-        } else {
-            print("[MoodLogSheet] using existing weatherNote before save: \(wk.weatherNote)")
-        }
-
         let entry = MoodEntry(
             emotions: selectedEmotions,
             activities: selectedActivities,
@@ -364,13 +357,7 @@ struct MoodLogSheet: View {
         entry.exerciseMinutes = hk.exerciseMinutes
         entry.steps = hk.steps
         entry.meditationMinutes = hk.meditationMinutes
-        entry.cycleNote = hk.cycleNote
         entry.waterOz = hk.waterOz
-        entry.caffeineNote = hk.caffeineMg == 0 ? "" : "\(Int(hk.caffeineMg))mg"
-
-        // Write WeatherKit value
-        entry.weatherNote = wk.weatherNote
-        print("[MoodLogSheet] saving weatherNote=\(entry.weatherNote.isEmpty ? "EMPTY" : entry.weatherNote)")
 
         modelContext.insert(entry)
         try? modelContext.save()
