@@ -9,7 +9,7 @@ import SwiftUI
 
 enum LColors {
     // Base
-    static let bg = Color(lunixiaHex: "#020304")
+    static let bg = Color(lunixiaHex: "#07070a")
     static let bgSoft = Color(lunixiaHex: "#07070a")
     
     // Text

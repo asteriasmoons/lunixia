@@ -8,6 +8,16 @@ import SwiftUI
 struct MoodDetailView: View {
     let entry: MoodEntry
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+
+    @State private var showInsights = false
+    @State private var showHistory = false
+
+#if canImport(UIKit)
+    private var isIPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+#else
+    private var isIPad: Bool { false }
+#endif
 
     var body: some View {
         ZStack {
@@ -40,6 +50,56 @@ struct MoodDetailView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
+
+                    // MARK: Action Buttons
+                    HStack(spacing: 12) {
+                        Button { showInsights = true } label: {
+                            HStack(spacing: 6) {
+                                Image("cloudmind")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 15, height: 15)
+                                Text("Analyze")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(
+                                Capsule().fill(LGradients.blue.opacity(0.22))
+                            )
+                            .overlay(
+                                Capsule().strokeBorder(LGradients.blue.opacity(0.55), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button { showHistory = true } label: {
+                            HStack(spacing: 6) {
+                                Image("clockfill")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 15, height: 15)
+                                Text("History")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                            }
+                            .foregroundStyle(LColors.textSecondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(
+                                Capsule().fill(Color.white.opacity(0.06))
+                            )
+                            .overlay(
+                                Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
 
                     // MARK: Emotions card
                     if !entry.resolvedEmotions.isEmpty {
@@ -157,6 +217,38 @@ struct MoodDetailView: View {
                     Spacer(minLength: 60)
                 }
             }
+        }
+        // Insights — sheet on iPhone, fullScreenCover on iPad
+        .sheet(isPresented: Binding(
+            get: { !isIPad && showInsights },
+            set: { if !$0 { showInsights = false } }
+        )) {
+            MoodInsightsView(entry: entry, userId: appState.currentAppleUserId ?? "")
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { isIPad && showInsights },
+            set: { if !$0 { showInsights = false } }
+        )) {
+            MoodInsightsView(entry: entry, userId: appState.currentAppleUserId ?? "")
+        }
+        // History — sheet on iPhone, fullScreenCover on iPad
+        .sheet(isPresented: Binding(
+            get: { !isIPad && showHistory },
+            set: { if !$0 { showHistory = false } }
+        )) {
+            MoodInsightsHistoryView(
+                userId: appState.currentAppleUserId ?? "",
+                moodEntryId: entry.id.uuidString
+            )
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { isIPad && showHistory },
+            set: { if !$0 { showHistory = false } }
+        )) {
+            MoodInsightsHistoryView(
+                userId: appState.currentAppleUserId ?? "",
+                moodEntryId: entry.id.uuidString
+            )
         }
     }
 

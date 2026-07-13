@@ -8,15 +8,11 @@ import SwiftUI
 struct MoonPhaseView: View {
     let moonPhaseData: MoonPhaseData
 
-    @State private var showMoonPhaseDetails = false
-
-    private var currentMoonPhaseDetail: MoonPhaseDetail? {
-        MoonPhaseDetailData.detail(for: moonPhaseData.phaseName)
-    }
+    @State private var showMoonInsight = false
 
     var body: some View {
         Button {
-            showMoonPhaseDetails = true
+            showMoonInsight = true
         } label: {
             MoonPhaseCard(data: moonPhaseData)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -24,15 +20,10 @@ struct MoonPhaseView: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-        .sheet(isPresented: $showMoonPhaseDetails) {
-            if let detail = currentMoonPhaseDetail {
-                MoonPhaseDetailsSheet(
-                    detail: detail,
-                    phaseSymbolName: moonPhaseSymbolName(for: moonPhaseData.phaseName)
-                )
+        .sheet(isPresented: $showMoonInsight) {
+            MoonAIInsightSheet(moonPhaseData: moonPhaseData)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-            }
         }
     }
 }
@@ -104,12 +95,19 @@ private struct MoonPhaseCard: View {
     }
 }
 
-// MARK: - Details Sheet
+// MARK: - AI Insight Sheet
 
-private struct MoonPhaseDetailsSheet: View {
-    let detail: MoonPhaseDetail
-    let phaseSymbolName: String
-    
+private struct MoonAIInsightSheet: View {
+    let moonPhaseData: MoonPhaseData
+
+    @State private var response: MoonAIResponse?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var phaseSymbolName: String {
+        moonPhaseSymbolName(for: moonPhaseData.phaseName)
+    }
+
     var body: some View {
         ZStack {
             LunixiaBackground()
@@ -117,66 +115,14 @@ private struct MoonPhaseDetailsSheet: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    HStack(alignment: .center, spacing: 10) {
-                        Image(systemName: phaseSymbolName)
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 22, height: 22)
+                    header
 
-                        Text(detail.phaseName)
-                            .font(.system(size: 24, weight: .black, design: .rounded))
-                            .foregroundStyle(LGradients.header)
-
-                        Spacer()
-                    }
-
-                    GlassCard(padding: 20) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            moonPhaseDetailSection(title: "Vibe") {
-                                Text(detail.vibe)
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(LColors.textPrimary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            Divider()
-                                .background(LColors.glassBorder)
-
-                            moonPhaseDetailSection(title: "Description") {
-                                Text(detail.description)
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(LColors.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            Divider()
-                                .background(LColors.glassBorder)
-
-                            moonPhaseDetailSection(title: "Rituals") {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    ForEach(detail.rituals, id: \.self) { ritual in
-                                        HStack(alignment: .top, spacing: 10) {
-                                            Circle()
-                                                .fill(LColors.textSecondary)
-                                                .frame(width: 6, height: 6)
-                                                .padding(.top, 6)
-
-                                            Text(ritual)
-                                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                                .foregroundStyle(LColors.textPrimary)
-                                                .fixedSize(horizontal: false, vertical: true)
-                                        }
-                                    }
-                                }
-                            }
-
-                            Divider()
-                                .background(LColors.glassBorder)
-
-                            moonPhaseDetailSection(title: "Best For") {
-                                MoonBestForKeywordList(keywords: detail.bestFor)
-                            }
-                        }
+                    if isLoading {
+                        loadingCard
+                    } else if let response {
+                        responseCard(response)
+                    } else if let errorMessage {
+                        errorCard(errorMessage)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -184,6 +130,157 @@ private struct MoonPhaseDetailsSheet: View {
                 .padding(.bottom, 40)
             }
         }
+        .task {
+            guard response == nil, !isLoading else { return }
+            await loadInsight()
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: phaseSymbolName)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+
+                Text(moonPhaseData.phaseName)
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundStyle(LGradients.header)
+
+                Spacer()
+            }
+
+            Text("\(moonPhaseData.signName) • \(moonPhaseData.detailLine)")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(LColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var loadingCard: some View {
+        GlassCard(padding: 22) {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.1)
+
+                Text("Reading the moon’s reflection…")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(LGradients.header)
+                    .multilineTextAlignment(.center)
+
+                Text("Considering what this moon phase, sign, and lunar detail may symbolically mean for spiritual and personal growth.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+        }
+    }
+
+    private func responseCard(_ response: MoonAIResponse) -> some View {
+        GlassCard(padding: 22) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(response.title)
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundStyle(LGradients.header)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                keywordList(response.keywords)
+
+                Text(response.message)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LColors.textPrimary)
+                    .lineSpacing(5)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("AI-generated reflective interpretation")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary.opacity(0.75))
+            }
+        }
+    }
+
+    private func errorCard(_ message: String) -> some View {
+        GlassCard(padding: 22) {
+            VStack(spacing: 16) {
+                Image(systemName: "moon.stars")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(LGradients.header)
+
+                Text("The moon reflection could not be created.")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(LGradients.header)
+                    .multilineTextAlignment(.center)
+
+                Text(message)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(LColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    Task {
+                        await loadInsight()
+                    }
+                } label: {
+                    Text("Try Again")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(
+                            Capsule()
+                                .fill(LColors.accentGradient)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func keywordList(_ keywords: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(keywords, id: \.self) { keyword in
+                Text(keyword)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(LGradients.header)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(LGradients.header, lineWidth: 1)
+                    )
+            }
+        }
+    }
+
+    @MainActor
+    private func loadInsight() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            response = try await MoonAIService.shared
+                .generateMoonInterpretation(
+                    phaseName: moonPhaseData.phaseName,
+                    signName: moonPhaseData.signName,
+                    details: moonPhaseData.detailLine
+                )
+        } catch {
+            response = nil
+            errorMessage = error.localizedDescription
+        }
+
+        isLoading = false
     }
 }
 
@@ -209,45 +306,5 @@ private func moonPhaseSymbolName(for phaseName: String) -> String {
         return "moonphase.waning.crescent"
     default:
         return "moonphase.full.moon"
-    }
-}
-
-@ViewBuilder
-private func moonPhaseDetailSection<Content: View>(
-    title: String,
-    @ViewBuilder content: () -> Content
-) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-        Text(title)
-            .font(.system(size: 20, weight: .black, design: .rounded))
-            .foregroundStyle(LGradients.header)
-
-        content()
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-}
-
-// MARK: - Best For Keywords
-
-private struct MoonBestForKeywordList: View {
-    let keywords: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(keywords, id: \.self) { keyword in
-                Text(keyword)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(LGradients.header)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white.opacity(0.06))
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(LGradients.header, lineWidth: 1)
-                    )
-            }
-        }
     }
 }

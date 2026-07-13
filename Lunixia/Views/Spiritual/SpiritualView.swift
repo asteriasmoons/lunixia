@@ -5,6 +5,8 @@
 
 import SwiftUI
 import SwiftData
+import AVFoundation
+import AudioToolbox
 
 struct SpiritualView: View {
     @Environment(\.modelContext) private var modelContext
@@ -268,6 +270,9 @@ struct SpiritualView: View {
                         MoonPhaseView(moonPhaseData: MoonPhaseCalculator.calculate())
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal, 16)
+                        
+                        MeditationTimerCard()
+                            .padding(.horizontal, 16)
 
                         SpiritualTarotCard(
                             tip: currentDailyTarotTip,
@@ -316,6 +321,607 @@ struct SpiritualView: View {
             horoscopeMidnightRefreshTask?.cancel()
             horoscopeMidnightRefreshTask = nil
         }
+    }
+}
+
+// MARK: - Meditation Timer Card
+
+private struct MeditationTimerCard: View {
+    @Environment(\.scenePhase) private var scenePhase
+    
+    @State private var customMinutesText = ""
+    @State private var isEnteringCustomTime = false
+    @State private var validationMessage: String? = nil
+    
+    @State private var totalSeconds = 5 * 60
+    @State private var remainingSeconds = 5 * 60
+    
+    @State private var isRunning = false
+    @State private var isPaused = false
+    
+    @State private var endDate: Date?
+    @State private var timerTask: Task<Void, Never>?
+    
+    @State private var completionPlayer: AVAudioPlayer?
+    
+    private let dotCount = 42
+    
+    private var progress: Double {
+        guard totalSeconds > 0 else { return 0 }
+        
+        return min(
+            1,
+            max(
+                0,
+                Double(totalSeconds - remainingSeconds)
+                / Double(totalSeconds)
+            )
+        )
+    }
+    
+    private var formattedTime: String {
+        let minutes = remainingSeconds / 60
+        let seconds = remainingSeconds % 60
+        
+        return String(
+            format: "%02d:%02d",
+            minutes,
+            seconds
+        )
+    }
+    
+    var body: some View {
+        GlassCard(padding: 20) {
+            VStack(spacing: 18) {
+                
+                HStack(spacing: 10) {
+                    
+                    Image("zenlove")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(
+                            width: 19,
+                            height: 19
+                        )
+                        .foregroundStyle(LGradients.header)
+                    
+                    Text("Meditation Timer")
+                        .font(
+                            .system(
+                                size: 20,
+                                weight: .black,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(LGradients.header)
+                    
+                    Spacer()
+                }
+                
+                dottedProgressCircle
+                
+                if isRunning || isPaused {
+                    runningControls
+                } else {
+                    setupControls
+                }
+                
+                if let validationMessage {
+                    Text(validationMessage)
+                        .font(
+                            .system(
+                                size: 12,
+                                weight: .medium,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(LColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .onDisappear {
+            timerTask?.cancel()
+            timerTask = nil
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            
+            guard newPhase == .active else { return }
+            guard isRunning else { return }
+            guard !isPaused else { return }
+            
+            updateRemainingTime()
+            
+            if remainingSeconds <= 0 {
+                completeTimer()
+            } else {
+                startCountdownTask()
+            }
+        }
+    }
+    
+    // MARK: Circle
+    
+    private var dottedProgressCircle: some View {
+        
+        ZStack {
+            
+            GeometryReader { geo in
+                
+                let diameter = min(
+                    geo.size.width,
+                    geo.size.height
+                )
+                
+                let radius = diameter / 2 - 8
+                
+                let center = CGPoint(
+                    x: geo.size.width / 2,
+                    y: geo.size.height / 2
+                )
+                
+                ForEach(0..<dotCount, id: \.self) { index in
+                    
+                    let fraction =
+                    Double(index)
+                    / Double(dotCount)
+                    
+                    let angle =
+                    fraction * (.pi * 2)
+                    - (.pi / 2)
+                    
+                    let x =
+                    center.x
+                    + CGFloat(cos(angle))
+                    * radius
+                    
+                    let y =
+                    center.y
+                    + CGFloat(sin(angle))
+                    * radius
+                    
+                    let threshold =
+                    Double(index + 1)
+                    / Double(dotCount)
+                    
+                    Circle()
+                        .fill(
+                            threshold <= progress
+                            ? AnyShapeStyle(
+                                LColors.accentGradient
+                            )
+                            : AnyShapeStyle(
+                                Color.white.opacity(0.14)
+                            )
+                        )
+                        .frame(
+                            width: 9,
+                            height: 9
+                        )
+                        .position(
+                            x: x,
+                            y: y
+                        )
+                }
+            }
+            
+            VStack(spacing: 4) {
+                
+                Text(formattedTime)
+                    .font(
+                        .system(
+                            size: 31,
+                            weight: .black,
+                            design: .rounded
+                        )
+                    )
+                    .monospacedDigit()
+                    .foregroundStyle(LGradients.header)
+                
+                Text(
+                    isPaused
+                    ? "Paused"
+                    : isRunning
+                    ? "Breathe"
+                    : "Ready"
+                )
+                .font(
+                    .system(
+                        size: 12,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(LColors.textSecondary)
+            }
+        }
+        .frame(
+            width: 174,
+            height: 174
+        )
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: Setup Controls
+    
+    private var setupControls: some View {
+        
+        HStack(spacing: 10) {
+            
+            presetButton(minutes: 5)
+            
+            presetButton(minutes: 10)
+            
+            if isEnteringCustomTime {
+                customTimeControl
+            } else {
+                
+                Button {
+                    
+                    validationMessage = nil
+                    customMinutesText = ""
+                    isEnteringCustomTime = true
+                    
+                } label: {
+                    
+                    Text("Custom")
+                        .font(
+                            .system(
+                                size: 13,
+                                weight: .bold,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(LGradients.header)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(
+                            Color.white.opacity(0.07)
+                        )
+                        .clipShape(Capsule())
+                        .overlay {
+                            Capsule()
+                                .strokeBorder(
+                                    Color.white.opacity(0.12),
+                                    lineWidth: 1
+                                )
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+    
+    private func presetButton(
+        minutes: Int
+    ) -> some View {
+        
+        Button {
+            
+            startTimer(minutes: minutes)
+            
+        } label: {
+            
+            Text("\(minutes) min")
+                .font(
+                    .system(
+                        size: 13,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background {
+                    Capsule()
+                        .fill(LColors.accentGradient)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var customTimeControl: some View {
+        
+        HStack(spacing: 6) {
+            
+            TextField(
+                "Min",
+                text: $customMinutesText
+            )
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(
+                .system(
+                    size: 13,
+                    weight: .bold,
+                    design: .rounded
+                )
+            )
+            .foregroundStyle(LColors.textPrimary)
+            .frame(
+                width: 54,
+                height: 40
+            )
+            .background(
+                Color.white.opacity(0.07)
+            )
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(
+                        Color.white.opacity(0.12),
+                        lineWidth: 1
+                    )
+            }
+            
+            Button {
+                
+                startCustomTimer()
+                
+            } label: {
+                
+                Image("rightwavy")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(
+                        width: 18,
+                        height: 18
+                    )
+                    .foregroundStyle(.white)
+                    .frame(
+                        width: 40,
+                        height: 40
+                    )
+                    .background {
+                        Circle()
+                            .fill(
+                                LColors.accentGradient
+                            )
+                    }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    // MARK: Running Controls
+    
+    private var runningControls: some View {
+        
+        HStack(spacing: 12) {
+            
+            Button {
+                
+                if isPaused {
+                    resumeTimer()
+                } else {
+                    pauseTimer()
+                }
+                
+            } label: {
+                
+                Text(
+                    isPaused
+                    ? "Resume"
+                    : "Pause"
+                )
+                .font(
+                    .system(
+                        size: 13,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background {
+                    Capsule()
+                        .fill(
+                            LColors.accentGradient
+                        )
+                }
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                
+                resetTimer()
+                
+            } label: {
+                
+                Text("End")
+                    .font(
+                        .system(
+                            size: 13,
+                            weight: .bold,
+                            design: .rounded
+                        )
+                    )
+                    .foregroundStyle(
+                        LColors.textPrimary
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .background(
+                        Color.white.opacity(0.07)
+                    )
+                    .clipShape(Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(
+                                Color.white.opacity(0.12),
+                                lineWidth: 1
+                            )
+                    }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    // MARK: Timer Actions
+    
+    private func startCustomTimer() {
+        let trimmed =
+        customMinutesText
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+        
+        guard let minutes = Int(trimmed),
+              (1...180).contains(minutes) else {
+            
+            validationMessage =
+            "Enter a time from 1 to 180 minutes."
+            
+            return
+        }
+        
+        startTimer(minutes: minutes)
+    }
+    
+    private func startTimer(
+        minutes: Int
+    ) {
+        timerTask?.cancel()
+        
+        let seconds = minutes * 60
+        
+        totalSeconds = seconds
+        remainingSeconds = seconds
+        
+        endDate =
+        Date()
+            .addingTimeInterval(
+                TimeInterval(seconds)
+            )
+        
+        isRunning = true
+        isPaused = false
+        isEnteringCustomTime = false
+        
+        validationMessage = nil
+        
+        startCountdownTask()
+    }
+    
+    private func startCountdownTask() {
+        timerTask?.cancel()
+        
+        timerTask = Task { @MainActor in
+            
+            while !Task.isCancelled {
+                
+                guard isRunning else {
+                    return
+                }
+                
+                guard !isPaused else {
+                    return
+                }
+                
+                updateRemainingTime()
+                
+                if remainingSeconds <= 0 {
+                    completeTimer()
+                    return
+                }
+                
+                do {
+                    try await Task.sleep(
+                        for: .milliseconds(250)
+                    )
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+    
+    private func updateRemainingTime() {
+        guard let endDate else {
+            return
+        }
+        
+        remainingSeconds = max(
+            0,
+            Int(
+                ceil(
+                    endDate.timeIntervalSinceNow
+                )
+            )
+        )
+    }
+    
+    private func pauseTimer() {
+        updateRemainingTime()
+        
+        timerTask?.cancel()
+        timerTask = nil
+        
+        endDate = nil
+        
+        isPaused = true
+        isRunning = true
+    }
+    
+    private func resumeTimer() {
+        guard remainingSeconds > 0 else {
+            return
+        }
+        
+        endDate =
+        Date()
+            .addingTimeInterval(
+                TimeInterval(
+                    remainingSeconds
+                )
+            )
+        
+        isPaused = false
+        isRunning = true
+        
+        startCountdownTask()
+    }
+    
+    private func resetTimer() {
+        timerTask?.cancel()
+        timerTask = nil
+        
+        totalSeconds = 5 * 60
+        remainingSeconds = 5 * 60
+        
+        endDate = nil
+        
+        isRunning = false
+        isPaused = false
+        isEnteringCustomTime = false
+        
+        customMinutesText = ""
+        validationMessage = nil
+    }
+    
+    private func completeTimer() {
+        timerTask?.cancel()
+        timerTask = nil
+        
+        remainingSeconds = 0
+        
+        endDate = nil
+        
+        isRunning = false
+        isPaused = false
+        
+        playCompletionTune()
+    }
+    
+    // MARK: Completion Sound
+    
+    private func playCompletionTune() {
+        AudioServicesPlaySystemSound(1031) // Minuet
     }
 }
 

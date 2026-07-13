@@ -24,6 +24,16 @@ struct MoodTabView: View {
     
     @State private var showPremiumBanner = false
     @State private var premiumBannerMessage = ""
+    
+#if canImport(UIKit)
+private var shouldUseFullScreenSheets: Bool {
+    UIDevice.current.userInterfaceIdiom == .pad
+}
+#else
+private var shouldUseFullScreenSheets: Bool {
+    false
+}
+#endif
 
     private var isPremium: Bool {
         storeManager.isPremium
@@ -340,7 +350,16 @@ struct MoodTabView: View {
                 }
             )
         }
-        .sheet(item: $selectedEntry) { entry in
+        .sheet(item: Binding(
+            get: { shouldUseFullScreenSheets ? nil : selectedEntry },
+            set: { selectedEntry = $0 }
+        )) { entry in
+            MoodDetailView(entry: entry)
+        }
+        .fullScreenCover(item: Binding(
+            get: { shouldUseFullScreenSheets ? selectedEntry : nil },
+            set: { selectedEntry = $0 }
+        )) { entry in
             MoodDetailView(entry: entry)
         }
         .fullScreenCover(isPresented: $showChat) {

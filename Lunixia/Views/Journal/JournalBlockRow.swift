@@ -7,6 +7,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 import PhotosUI
+import PencilKit
 
 struct JournalBlockRow: View {
     @Environment(\.modelContext) private var modelContext
@@ -40,6 +41,7 @@ struct JournalBlockRow: View {
     @State private var showCalloutIconPicker = false
     @State private var isScrollingCalloutIconPicker = false
     @State private var isImageToolbarVisible = false
+    @State private var showDrawingEditor = false
     // Block accent color pickers
     @State private var showDividerColorPicker = false
     @State private var dividerColor1: Color = Color(red: 0.32, green: 0.27, blue: 0.96)
@@ -197,6 +199,7 @@ struct JournalBlockRow: View {
 
                 transformButton("Code", icon: "chevron.left.forwardslash.chevron.right", type: .code)
                 transformButton("Divider", icon: "minus", type: .divider)
+                transformButton("Drawing", icon: "pencil.tip", type: .drawing)
                 transformButton("Table", icon: "tablecells", type: .table)
             } label: {
                 Label("Turn Into", systemImage: "wand.and.stars")
@@ -410,6 +413,7 @@ struct JournalBlockRow: View {
         case .code:      codeEditor
         case .callout:   calloutEditor
         case .image:     imageEditor
+        case .drawing:   drawingEditor
         case .table:     tableEditor
         case .toggle, .toggleHeading1, .toggleHeading2, .toggleHeading3,
              .toggleHeading4, .toggleHeading5, .toggleHeading6: textEditor
@@ -693,6 +697,56 @@ struct JournalBlockRow: View {
                 }
                 .padding(.leading, indentPadding)
             }
+        }
+    }
+    
+    // MARK: - Drawing Editor
+
+    private var drawingEditor: some View {
+        Button {
+            showDrawingEditor = true
+        } label: {
+            Group {
+                if let data = block.drawingData,
+                   let drawing = try? PKDrawing(data: data),
+                   !drawing.bounds.isEmpty {
+
+                    Image(uiImage: drawing.image(
+                        from: drawing.bounds,
+                        scale: UIScreen.main.scale
+                    ))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+
+                } else {
+
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 220)
+                        .overlay {
+                            VStack(spacing: 10) {
+                                Image(systemName: "pencil.and.scribble")
+                                    .font(.system(size: 40))
+
+                                Text("Tap to Draw")
+                                    .font(.headline)
+                            }
+                        }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .fullScreenCover(isPresented: $showDrawingEditor) {
+            JournalDrawingView(
+                drawingData: Binding(
+                    get: { block.drawingData ?? Data() },
+                    set: {
+                        block.drawingData = $0
+                        block.touch()
+                    }
+                )
+            )
         }
     }
 
@@ -1197,7 +1251,7 @@ struct JournalBlockRow: View {
         case .paragraph, .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout: return true
-        case .divider, .code, .image, .table: return false
+        case .divider, .code, .image, .drawing, .table: return false
         }
     }
 
@@ -1207,7 +1261,7 @@ struct JournalBlockRow: View {
              .toggle, .bulletedList, .numberedList, .checklist:
             return true
         case .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
-             .blockquote, .callout, .divider, .code, .image, .table:
+               .blockquote, .callout, .divider, .code, .image, .drawing, .table:
             return false
         }
     }
@@ -1382,7 +1436,7 @@ struct JournalBlockRow: View {
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout:
             return true
-        case .divider, .code, .image, .table:
+        case .divider, .code, .image, .drawing, .table:
             return false
         }
     }
@@ -1428,7 +1482,7 @@ struct JournalBlockRow: View {
         case .paragraph, .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout, .code: return true
-        case .divider, .image, .table: return false
+        case .divider, .image, .drawing, .table: return false
         }
     }
 
@@ -1437,7 +1491,7 @@ struct JournalBlockRow: View {
         case .paragraph, .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout, .code: return true
-        case .divider, .image, .table: return false
+        case .divider, .image, .drawing, .table: return false
         }
     }
 
@@ -1459,6 +1513,7 @@ struct JournalBlockRow: View {
         case .divider:                           return ""
         case .code:                              return "Code"
         case .image:                             return ""
+        case .drawing:                           return ""
         case .table:                             return ""
         }
     }
@@ -2193,6 +2248,7 @@ private struct JournalKeyboardBlockAccessoryView: View {
             .divider,
             .code,
             .image,
+            .drawing,
             .table
         ]
     }
@@ -2281,6 +2337,7 @@ private struct JournalKeyboardBlockAccessoryView: View {
         case .divider: return "Divider"
         case .code: return "Code"
         case .image: return "Image"
+        case .drawing: return "Drawing"
         case .table: return "Table"
         }
     }
@@ -2307,4 +2364,48 @@ private func uiColorFromHex(_ hex: String) -> UIColor? {
     let blue = CGFloat(value & 0x0000FF) / 255
 
     return UIColor(red: red, green: green, blue: blue, alpha: 1)
+}
+
+struct JournalPencilCanvasView: UIViewRepresentable {
+    @Binding var drawingData: Data
+
+    func makeUIView(context: Context) -> PKCanvasView {
+        let canvas = PKCanvasView()
+        canvas.backgroundColor = .clear
+        canvas.isOpaque = false
+        canvas.drawingPolicy = .anyInput
+        canvas.tool = PKInkingTool(.pen, color: .white, width: 4)
+        canvas.delegate = context.coordinator
+
+        if let drawing = try? PKDrawing(data: drawingData) {
+            canvas.drawing = drawing
+        }
+
+        return canvas
+    }
+
+    func updateUIView(_ canvas: PKCanvasView, context: Context) {
+        guard
+            let drawing = try? PKDrawing(data: drawingData),
+            canvas.drawing.dataRepresentation() != drawingData
+        else { return }
+
+        canvas.drawing = drawing
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(drawingData: $drawingData)
+    }
+
+    final class Coordinator: NSObject, PKCanvasViewDelegate {
+        @Binding var drawingData: Data
+
+        init(drawingData: Binding<Data>) {
+            _drawingData = drawingData
+        }
+
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            drawingData = canvasView.drawing.dataRepresentation()
+        }
+    }
 }

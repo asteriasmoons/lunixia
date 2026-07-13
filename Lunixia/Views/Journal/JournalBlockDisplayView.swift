@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import PencilKit
 
 struct JournalBlockDisplayView: View {
     let entry: JournalEntry
@@ -31,7 +32,7 @@ struct JournalBlockDisplayView: View {
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout:
             return CGFloat(block.indentLevel) * 20
-        case .divider, .code, .image, .table:
+        case .divider, .code, .image, .drawing, .table:
             return 0
         }
     }
@@ -303,6 +304,8 @@ struct JournalBlockDisplayView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: block.imageAlignment == .center ? .center : .leading)
             }
+        case .drawing:
+            JournalPencilDrawingPreview(block: block)
         case .table:
             JournalTablePreviewView(block: block, resolvedTextColor: resolvedTextColor)
         }
@@ -629,6 +632,38 @@ struct JournalBlockDisplayView: View {
 
     private func bulletSymbolName(for indentLevel: Int) -> String {
         indentLevel % 2 == 1 ? "circle" : "circle.fill"
+    }
+}
+
+// MARK: - Drawing Preview
+
+private struct JournalPencilDrawingPreview: View {
+    let block: JournalBlock
+
+    var body: some View {
+        Group {
+            if let data = block.drawingData,
+               let drawing = try? PKDrawing(data: data),
+               !drawing.bounds.isEmpty {
+                Image(uiImage: drawing.image(
+                    from: drawing.bounds,
+                    scale: UIScreen.main.scale
+                ))
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(height: 180)
+                    .overlay(
+                        Text("Empty Drawing")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LColors.textSecondary)
+                    )
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

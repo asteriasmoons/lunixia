@@ -51,6 +51,8 @@ final class LunixiaMedication {
 
     // MARK: Auto Decrease
     var autoDecreaseEnabled: Bool = false
+    var autoDecreaseHour: Int = 9
+    var autoDecreaseMinute: Int = 0
     var lastAutoDecreaseDayKey: String = ""
 
     // MARK: Dose Notifications
@@ -132,6 +134,19 @@ final class LunixiaMedication {
         let weekday = Calendar.current.component(.weekday, from: Date())
         return doses(forWeekday: weekday)
     }
+    
+    // MARK: - Computed: auto decrease time
+
+    var autoDecreaseTimeDisplayString: String {
+        let cleanHour = min(max(autoDecreaseHour, 0), 23)
+        let cleanMinute = min(max(autoDecreaseMinute, 0), 59)
+
+        let hour = cleanHour % 12 == 0 ? 12 : cleanHour % 12
+        let minute = String(format: "%02d", cleanMinute)
+        let period = cleanHour < 12 ? "AM" : "PM"
+
+        return "\(hour):\(minute) \(period)"
+    }
 
     // MARK: - Computed: dose notify times
 
@@ -170,6 +185,8 @@ final class LunixiaMedication {
         timesPerDay: Int = 1,
         doseScheduleOverrides: [Int: Int] = [:],
         autoDecreaseEnabled: Bool = false,
+        autoDecreaseHour: Int = 9,
+        autoDecreaseMinute: Int = 0,
         notifyDose: Bool = false,
         doseNotifyTimes: [DoseNotifyTime] = [DoseNotifyTime(hour: 9, minute: 0)],
         notifyRefill: Bool = false,
@@ -188,6 +205,8 @@ final class LunixiaMedication {
         self.timesPerDay = timesPerDay
         self.lastTakenAt = nil
         self.autoDecreaseEnabled = autoDecreaseEnabled
+        self.autoDecreaseHour = min(max(autoDecreaseHour, 0), 23)
+        self.autoDecreaseMinute = min(max(autoDecreaseMinute, 0), 59)
         self.lastAutoDecreaseDayKey = ""
         self.notifyDose = notifyDose
         self.doseNotifyHour = doseNotifyTimes.first?.hour ?? 9

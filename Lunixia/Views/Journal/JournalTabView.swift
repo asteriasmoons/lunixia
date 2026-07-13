@@ -80,7 +80,18 @@ struct JournalTabView: View {
                         MindfulMinutesBanner(minutes: mindfulMinutes)
                             .padding(.horizontal, LSpacing.pageHorizontal)
                             .padding(.bottom, 12)
-                        
+
+                        if let userId = appState.currentAppleUserId {
+                            NavigationLink {
+                                ThemeInsightsView(userId: userId)
+                            } label: {
+                                ThemeInsightsCard()
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, LSpacing.pageHorizontal)
+                            .padding(.bottom, 12)
+                        }
+
                         JournalStreakCard(
                             currentStreak: currentJournalStreak,
                             bestStreak: bestJournalStreak,
@@ -135,6 +146,14 @@ struct JournalTabView: View {
                 loadMindfulMinutesIfNeeded()
                 scheduleMindfulMinutesMidnightRefresh()
                 updateBestStreakIfNeeded()
+
+                // One-time backfill of tags + mindful minutes for Theme Insights
+                if let userId = appState.currentAppleUserId {
+                    ThemeInsightsBackfillManager.backfillIfNeeded(
+                        modelContext: modelContext,
+                        userId: userId
+                    )
+                }
             }
             .onDisappear {
                 mindfulMinutesMidnightRefreshTask?.cancel()
@@ -513,7 +532,7 @@ struct JournalTabView: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 24, height: 24)
+                        .frame(width: 26, height: 26)
                         .foregroundStyle(LGradients.header)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -531,6 +550,42 @@ struct JournalTabView: View {
                     Text("\(minutes)")
                         .font(.system(size: 24, weight: .black, design: .rounded))
                         .foregroundStyle(LGradients.header)
+                }
+            }
+        }
+    }
+
+    // MARK: - Theme Insights Card
+
+    struct ThemeInsightsCard: View {
+        var body: some View {
+            GlassCard {
+                HStack(spacing: 12) {
+                    Image("tagstar")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
+                        .foregroundStyle(LGradients.header)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Theme Insights")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        Text("Patterns throughout your journal entries")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image("chevright")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(LColors.textSecondary)
                 }
             }
         }
@@ -956,6 +1011,10 @@ struct JournalTabView: View {
         private var visiblePrompts: [JournalPrompt] {
             Array(prompts.prefix(visiblePromptCount))
         }
+        
+        private var shouldUseFullScreenSheets: Bool {
+            UIDevice.current.userInterfaceIdiom == .pad
+        }
 
         var body: some View {
             ZStack {
@@ -978,17 +1037,37 @@ struct JournalTabView: View {
                 .ignoresSafeArea(edges: .bottom)
                 .navigationBarBackButtonHidden(true)
                 .navigationBarTitleDisplayMode(.inline)
-                .sheet(isPresented: $showStoredPromptsPopup) {
+                .sheet(isPresented: Binding(
+                    get: { showStoredPromptsPopup && !shouldUseFullScreenSheets },
+                    set: { if !$0 { showStoredPromptsPopup = false } }
+                )) {
                     storedJournalPromptsSheet
                         .preferredColorScheme(.dark)
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                 }
-                .sheet(isPresented: $showPromptEditorPopup) {
+                .fullScreenCover(isPresented: Binding(
+                    get: { showStoredPromptsPopup && shouldUseFullScreenSheets },
+                    set: { if !$0 { showStoredPromptsPopup = false } }
+                )) {
+                    storedJournalPromptsSheet
+                        .preferredColorScheme(.dark)
+                }
+                .sheet(isPresented: Binding(
+                    get: { showPromptEditorPopup && !shouldUseFullScreenSheets },
+                    set: { if !$0 { showPromptEditorPopup = false } }
+                )) {
                     storedJournalPromptEditorSheet
                         .preferredColorScheme(.dark)
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
+                }
+                .fullScreenCover(isPresented: Binding(
+                    get: { showPromptEditorPopup && shouldUseFullScreenSheets },
+                    set: { if !$0 { showPromptEditorPopup = false } }
+                )) {
+                    storedJournalPromptEditorSheet
+                        .preferredColorScheme(.dark)
                 }
                 
                 // MARK: - Journal Prompt Overlay
@@ -1008,10 +1087,20 @@ struct JournalTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showAnalysisSheet) {
+            .sheet(isPresented: Binding(
+                get: { showAnalysisSheet && !shouldUseFullScreenSheets },
+                set: { if !$0 { showAnalysisSheet = false } }
+            )) {
                 analysisMasterSheet
                     .presentationDetents([.large])
                     .presentationDragIndicator(.hidden)
+                    .preferredColorScheme(.dark)
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { showAnalysisSheet && shouldUseFullScreenSheets },
+                set: { if !$0 { showAnalysisSheet = false } }
+            )) {
+                analysisMasterSheet
                     .preferredColorScheme(.dark)
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showPromptSheet)
@@ -1026,7 +1115,6 @@ struct JournalTabView: View {
                 visiblePromptCount = 4
             }
         }
-        
 
         private var header: some View {
             VStack(spacing: 0) {

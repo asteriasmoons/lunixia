@@ -46,6 +46,10 @@ struct MedicationPageView: View {
             return refillDay >= today && refillDay <= sevenDays
         }.count
     }
+    
+    private var shouldUseFullScreenSheets: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
 
     var body: some View {
         ZStack {
@@ -136,41 +140,120 @@ struct MedicationPageView: View {
         }
         .completionBanner(isShowing: showBanner, message: bannerMessage)
         .navigationBarHidden(true)
-        .sheet(isPresented: $showAddSheet) {
+        .sheet(isPresented: Binding(
+            get: { showAddSheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showAddSheet = false } }
+        )) {
             MedAddEditSheet(mode: .add) { med in
                 guard canCreateMedicationCard else {
                     showPremiumRequiredMessage()
                     return
                 }
                 if med.autoDecreaseEnabled && med.lastAutoDecreaseDayKey.isEmpty {
-                    med.lastAutoDecreaseDayKey = medicationAutomationDayKey(for: Date())
+                    med.lastAutoDecreaseDayKey = MedicationAutomationManager.dayKey(for: Date())
                 }
+                
                 modelContext.insert(med)
                 try? modelContext.save()
+                
+                MedicationAutomationManager.run(in: modelContext)
                 MedicationNotificationManager.shared.reschedule(for: med)
+                
                 flash("Medication added")
             }
         }
-        .sheet(isPresented: $showEditSheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showAddSheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showAddSheet = false } }
+        )) {
+            MedAddEditSheet(mode: .add) { med in
+                guard canCreateMedicationCard else {
+                    showPremiumRequiredMessage()
+                    return
+                }
+                if med.autoDecreaseEnabled && med.lastAutoDecreaseDayKey.isEmpty {
+                    med.lastAutoDecreaseDayKey = MedicationAutomationManager.dayKey(for: Date())
+                }
+
+                modelContext.insert(med)
+                try? modelContext.save()
+
+                MedicationAutomationManager.run(in: modelContext)
+                MedicationNotificationManager.shared.reschedule(for: med)
+
+                flash("Medication added")
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showEditSheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showEditSheet = false } }
+        )) {
             if let med = selectedMed {
                 MedAddEditSheet(mode: .edit(med)) { updated in
                     updated.updatedAt = Date()
                     updated.lastAutoRefillDayKey = ""
+
+                    if updated.autoDecreaseEnabled &&
+                        updated.lastAutoDecreaseDayKey.isEmpty {
+                        updated.lastAutoDecreaseDayKey = MedicationAutomationManager.dayKey(for: Date())
+                    }
+
                     try? modelContext.save()
-                    processMedicationAutomation()
+
+                    MedicationAutomationManager.run(in: modelContext)
                     MedicationNotificationManager.shared.reschedule(for: updated)
+
                     flash("Medication updated")
                 }
             }
         }
-        .sheet(isPresented: $showInventorySheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showEditSheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showEditSheet = false } }
+        )) {
+            if let med = selectedMed {
+                MedAddEditSheet(mode: .edit(med)) { updated in
+                    updated.updatedAt = Date()
+                    updated.lastAutoRefillDayKey = ""
+
+                    if updated.autoDecreaseEnabled &&
+                        updated.lastAutoDecreaseDayKey.isEmpty {
+                        updated.lastAutoDecreaseDayKey = MedicationAutomationManager.dayKey(for: Date())
+                    }
+
+                    try? modelContext.save()
+
+                    MedicationAutomationManager.run(in: modelContext)
+                    MedicationNotificationManager.shared.reschedule(for: updated)
+
+                    flash("Medication updated")
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showInventorySheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showInventorySheet = false } }
+        )) {
             if let med = selectedMed {
                 MedInventorySheet(medication: med) { action in
                     applyInventoryAction(action, to: med)
                 }
             }
         }
-        .sheet(isPresented: $showHistorySheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showInventorySheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showInventorySheet = false } }
+        )) {
+            if let med = selectedMed {
+                MedInventorySheet(medication: med) { action in
+                    applyInventoryAction(action, to: med)
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showHistorySheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showHistorySheet = false } }
+        )) {
             if let med = selectedMed {
                 MedHistorySheet(medication: med, isPremium: isPremium) { entry in
                     modelContext.delete(entry)
@@ -178,7 +261,33 @@ struct MedicationPageView: View {
                 }
             }
         }
-        .sheet(isPresented: $showRefillSheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showHistorySheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showHistorySheet = false } }
+        )) {
+            if let med = selectedMed {
+                MedHistorySheet(medication: med, isPremium: isPremium) { entry in
+                    modelContext.delete(entry)
+                    try? modelContext.save()
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showRefillSheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showRefillSheet = false } }
+        )) {
+            if let med = selectedMed {
+                MedDirectRefillSheet(medication: med) {
+                    try? modelContext.save()
+                    MedicationNotificationManager.shared.reschedule(for: med)
+                    flash("Refill date updated")
+                }
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { showRefillSheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showRefillSheet = false } }
+        )) {
             if let med = selectedMed {
                 MedDirectRefillSheet(medication: med) {
                     try? modelContext.save()
@@ -202,8 +311,9 @@ struct MedicationPageView: View {
                 flash("Medication deleted")
             }
         }
-        .onAppear { processMedicationAutomation() }
-        .task { _ = await MedicationNotificationManager.shared.requestAuthorization() }
+        .task {
+            _ = await MedicationNotificationManager.shared.requestAuthorization()
+        }
     }
 
     // MARK: - Overview Stat
@@ -411,6 +521,10 @@ struct MedicationPageView: View {
         med.currentAmount = newAmount
         med.lastTakenAt = Date()
         med.updatedAt = Date()
+
+        if med.autoDecreaseEnabled {
+            med.lastAutoDecreaseDayKey = MedicationAutomationManager.dayKey(for: Date())
+        }
         modelContext.insert(LunixiaMedHistoryEntry(
             type: .taken,
             amountText: "\(previous) → \(newAmount)",
@@ -438,93 +552,6 @@ struct MedicationPageView: View {
         case .setFull:       details = "Set inventory to full supply"
         }
         modelContext.insert(LunixiaMedHistoryEntry(type: .edited, amountText: "\(previous) → \(med.currentAmount)", details: details, medication: med))
-        try? modelContext.save()
-    }
-
-    // MARK: - Medication Automation
-
-    private func processMedicationAutomation() {
-        processRefills()
-        processAutoDecreases()
-    }
-
-    private func medicationAutomationDayKey(for date: Date) -> String {
-        let day = Calendar.current.startOfDay(for: date)
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt.string(from: day)
-    }
-
-    private func processRefills() {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let todayKey = medicationAutomationDayKey(for: today)
-
-        for med in medications {
-            guard med.isActive,
-                  let refillDate = med.refillDate,
-                  cal.startOfDay(for: refillDate) <= today,
-                  med.lastAutoRefillDayKey != todayKey else { continue }
-
-            let previous = med.currentAmount
-            med.currentAmount = max(0, med.supplyAmount)
-            med.lastAutoRefillDayKey = todayKey
-            med.updatedAt = Date()
-
-            if med.daysSupply > 0 {
-                med.refillDate = cal.date(byAdding: .day, value: med.daysSupply, to: cal.startOfDay(for: refillDate))
-            }
-
-            modelContext.insert(LunixiaMedHistoryEntry(
-                type: .refilled,
-                amountText: "\(previous) → \(med.currentAmount)",
-                details: med.daysSupply > 0 ? "Auto-refilled on refill date. Next refill in \(med.daysSupply) days." : "Auto-refilled on refill date.",
-                medication: med
-            ))
-
-            MedicationNotificationManager.shared.reschedule(for: med)
-        }
-
-        try? modelContext.save()
-    }
-
-    private func processAutoDecreases() {
-        let todayKey = medicationAutomationDayKey(for: Date())
-
-        for med in medications {
-            guard med.isActive,
-                  med.autoDecreaseEnabled else { continue }
-
-            if med.lastAutoDecreaseDayKey.isEmpty {
-                med.lastAutoDecreaseDayKey = todayKey
-                med.updatedAt = Date()
-                continue
-            }
-
-            guard med.lastAutoDecreaseDayKey != todayKey else { continue }
-
-            let doses = max(0, med.dosesToday)
-            guard doses > 0 else {
-                med.lastAutoDecreaseDayKey = todayKey
-                med.updatedAt = Date()
-                continue
-            }
-
-            let previous = med.currentAmount
-            let newAmount = max(0, med.currentAmount - doses)
-
-            med.currentAmount = newAmount
-            med.lastAutoDecreaseDayKey = todayKey
-            med.updatedAt = Date()
-
-            modelContext.insert(LunixiaMedHistoryEntry(
-                type: .taken,
-                amountText: "\(previous) → \(newAmount)",
-                details: doses > 1 ? "Auto-decreased by today’s scheduled \(doses) doses." : "Auto-decreased by today’s scheduled dose.",
-                medication: med
-            ))
-        }
-
         try? modelContext.save()
     }
 
@@ -647,7 +674,9 @@ struct MedAddEditSheet: View {
     @State private var defaultDoses      = 1
     @State private var doseOverrides: [Int: Int] = [:]
     @State private var autoDecreaseEnabled = false
-    @State private var notifyDose        = false
+    @State private var autoDecreaseHour    = 9
+    @State private var autoDecreaseMinute  = 0
+    @State private var notifyDose          = false
     @State private var doseNotifyTimes: [DoseNotifyTime] = [DoseNotifyTime(hour: 9, minute: 0)]
     @State private var notifyRefill      = false
     @State private var daysBeforeRefill  = 3
@@ -691,6 +720,10 @@ struct MedAddEditSheet: View {
         }
         if notifyRefill { parts.append("refill \(daysBeforeRefill)d before") }
         return parts.isEmpty ? "off" : parts.joined(separator: " · ")
+    }
+    
+    private var shouldUseFullScreenSheets: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
     }
 
     var body: some View {
@@ -755,10 +788,22 @@ struct MedAddEditSheet: View {
             }
         }
         .onAppear { loadIfEditing() }
-        .sheet(isPresented: $showRefillSheet) {
+        .sheet(isPresented: Binding(
+            get: { showRefillSheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showRefillSheet = false } }
+        )) {
             MedRefillConfigSheet(includeRefillDate: $includeRefillDate, refillDate: $refillDate)
         }
-        .sheet(isPresented: $showScheduleSheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showRefillSheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showRefillSheet = false } }
+        )) {
+            MedRefillConfigSheet(includeRefillDate: $includeRefillDate, refillDate: $refillDate)
+        }
+        .sheet(isPresented: Binding(
+            get: { showScheduleSheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showScheduleSheet = false } }
+        )) {
             MedScheduleConfigSheet(
                 scheduleFrequency: $scheduleFrequency,
                 weeklyWeekday: $weeklyWeekday,
@@ -766,7 +811,32 @@ struct MedAddEditSheet: View {
                 doseOverrides: $doseOverrides
             )
         }
-        .sheet(isPresented: $showNotifySheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showScheduleSheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showScheduleSheet = false } }
+        )) {
+            MedScheduleConfigSheet(
+                scheduleFrequency: $scheduleFrequency,
+                weeklyWeekday: $weeklyWeekday,
+                defaultDoses: $defaultDoses,
+                doseOverrides: $doseOverrides
+            )
+        }
+        .sheet(isPresented: Binding(
+            get: { showNotifySheet && !shouldUseFullScreenSheets },
+            set: { if !$0 { showNotifySheet = false } }
+        )) {
+            MedNotifyConfigSheet(
+                notifyDose: $notifyDose,
+                doseNotifyTimes: $doseNotifyTimes,
+                notifyRefill: $notifyRefill,
+                daysBeforeRefill: $daysBeforeRefill
+            )
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { showNotifySheet && shouldUseFullScreenSheets },
+            set: { if !$0 { showNotifySheet = false } }
+        )) {
             MedNotifyConfigSheet(
                 notifyDose: $notifyDose,
                 doseNotifyTimes: $doseNotifyTimes,
@@ -907,23 +977,69 @@ struct MedAddEditSheet: View {
         }
         .buttonStyle(.plain)
     }
+    
+    private var autoDecreaseTimeDisplayString: String {
+        let cleanHour = min(max(autoDecreaseHour, 0), 23)
+        let cleanMinute = min(max(autoDecreaseMinute, 0), 59)
+
+        let hour = cleanHour % 12 == 0 ? 12 : cleanHour % 12
+        let minute = String(format: "%02d", cleanMinute)
+        let period = cleanHour < 12 ? "AM" : "PM"
+
+        return "\(hour):\(minute) \(period)"
+    }
 
     private var autoDecreaseSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionKicker("auto decrease")
+
             GlassCard(padding: 16) {
-                Toggle(isOn: $autoDecreaseEnabled) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Auto Decrease")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LColors.textPrimary)
-                        Text("Automatically subtract today’s scheduled dose amount once per day.")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(LColors.textSecondary.opacity(0.7))
-                            .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 16) {
+                    Toggle(isOn: $autoDecreaseEnabled) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Auto Decrease")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LColors.textPrimary)
+
+                            Text("Automatically subtract the scheduled dose amount once per day.")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(LColors.textSecondary.opacity(0.7))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .tint(LColors.accent)
+
+                    if autoDecreaseEnabled {
+                        Divider()
+                            .overlay(LColors.glassBorder)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Decrease Time")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(LColors.textPrimary)
+
+                                    Text("Inventory updates at this time or the next time Lunixia becomes active afterward.")
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .foregroundStyle(LColors.textSecondary.opacity(0.7))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Spacer()
+
+                                Text(autoDecreaseTimeDisplayString)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LGradients.header)
+                            }
+
+                            LunixiaGradientTimeDrumPicker(
+                                hour: $autoDecreaseHour,
+                                minute: $autoDecreaseMinute
+                            )
+                        }
                     }
                 }
-                .tint(LColors.accent)
             }
         }
     }
@@ -943,7 +1059,9 @@ struct MedAddEditSheet: View {
         defaultDoses    = med.timesPerDay
         doseOverrides   = med.doseScheduleOverrides
         autoDecreaseEnabled = med.autoDecreaseEnabled
-        notifyDose      = med.notifyDose
+        autoDecreaseHour = med.autoDecreaseHour
+        autoDecreaseMinute = med.autoDecreaseMinute
+        notifyDose = med.notifyDose
         doseNotifyTimes = med.doseNotifyTimes
         notifyRefill    = med.notifyRefill
         daysBeforeRefill = med.daysBeforeRefillNotify
@@ -964,9 +1082,13 @@ struct MedAddEditSheet: View {
                 daysSupply: days, refillDate: includeRefillDate ? refillDate : nil,
                 scheduleFrequency: scheduleFrequency,
                 weeklyWeekday: weeklyWeekday,
-                timesPerDay: defaultDoses, doseScheduleOverrides: doseOverrides,
+                timesPerDay: defaultDoses,
+                doseScheduleOverrides: doseOverrides,
                 autoDecreaseEnabled: autoDecreaseEnabled,
-                notifyDose: notifyDose, doseNotifyTimes: doseNotifyTimes,
+                autoDecreaseHour: autoDecreaseHour,
+                autoDecreaseMinute: autoDecreaseMinute,
+                notifyDose: notifyDose,
+                doseNotifyTimes: doseNotifyTimes,
                 notifyRefill: notifyRefill, daysBeforeRefillNotify: daysBeforeRefill
             ))
         case .edit(let med):
@@ -977,8 +1099,15 @@ struct MedAddEditSheet: View {
             med.weeklyWeekday = min(max(weeklyWeekday, 1), 7)
             med.timesPerDay = defaultDoses; med.doseScheduleOverrides = scheduleFrequency == .weekly ? [:] : doseOverrides
             med.autoDecreaseEnabled = autoDecreaseEnabled
-            if !autoDecreaseEnabled { med.lastAutoDecreaseDayKey = "" }
-            med.notifyDose = notifyDose; med.doseNotifyTimes = doseNotifyTimes
+            med.autoDecreaseHour = min(max(autoDecreaseHour, 0), 23)
+            med.autoDecreaseMinute = min(max(autoDecreaseMinute, 0), 59)
+
+            if !autoDecreaseEnabled {
+                med.lastAutoDecreaseDayKey = ""
+            }
+
+            med.notifyDose = notifyDose
+            med.doseNotifyTimes = doseNotifyTimes
             med.notifyRefill = notifyRefill; med.daysBeforeRefillNotify = daysBeforeRefill
             onSave(med)
         }
@@ -1759,6 +1888,8 @@ struct MedHistorySheet: View {
     var isPremium: Bool = false
     let onDeleteEntry: (LunixiaMedHistoryEntry) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var showDeleteConfirm = false
+    @State private var entryPendingDeletion: LunixiaMedHistoryEntry? = nil
 
     private var visibleEntries: [LunixiaMedHistoryEntry] {
         let sortedEntries = (medication.historyEntries ?? []).sorted { $0.createdAt > $1.createdAt }
@@ -1802,6 +1933,18 @@ struct MedHistorySheet: View {
                 }
             }
         }
+        .lunixiaAlertConfirm(
+            isPresented: $showDeleteConfirm,
+            title: "Delete History Entry",
+            message: "Are you sure you want to delete this medication history entry?",
+            confirmTitle: "Delete",
+            confirmRole: .destructive
+        ) {
+            if let entry = entryPendingDeletion {
+                onDeleteEntry(entry)
+                entryPendingDeletion = nil
+            }
+        }
     }
 
     @ViewBuilder private func historyRow(_ entry: LunixiaMedHistoryEntry) -> some View {
@@ -1819,7 +1962,10 @@ struct MedHistorySheet: View {
                 }
                 Spacer()
             }
-            .onLongPressGesture { onDeleteEntry(entry) }
+            .onLongPressGesture {
+                entryPendingDeletion = entry
+                showDeleteConfirm = true
+            }
         }
     }
 

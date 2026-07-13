@@ -129,196 +129,154 @@ struct HealthTabView: View {
 
         return vitalsEntries.filter { $0.timestamp >= cutoff }
     }
+    
+#if canImport(UIKit)
+private var shouldUseFullScreenSheets: Bool {
+    UIDevice.current.userInterfaceIdiom == .pad
+}
+#else
+private var shouldUseFullScreenSheets: Bool {
+    false
+}
+#endif
 
     var body: some View {
         NavigationStack {
-        ZStack {
-            LunixiaBackground()
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // MARK: Nav
-                HStack {
-                    Text("Health")
-                        .font(.system(size: 28, weight: .black, design: .rounded))
-                        .foregroundStyle(LGradients.header)
-                    Spacer()
-                    Button {
-                        ensureGoalsExist()
-                        showGoalSheet = true
-                    } label: {
-                        Image("goalsparkle")
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
+            ZStack {
+                LunixiaBackground()
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // MARK: Nav
+                    HStack {
+                        Text("Health")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
                             .foregroundStyle(LGradients.header)
+                        Spacer()
+                        Button {
+                            ensureGoalsExist()
+                            showGoalSheet = true
+                        } label: {
+                            Image("goalsparkle")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                                .foregroundStyle(LGradients.header)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 16)
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 16) {
-
-                        // MARK: Body & Emotional State card
-                        bodyEmotionalStateCard
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 16)
+                    
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 16) {
+                            
+                            // MARK: Body & Emotional State card
+                            bodyEmotionalStateCard
+                                .padding(.horizontal, 16)
+                            
+                            // MARK: Sleep card
+                            SleepHealthCard(
+                                previousNightSleepHours: previousNightSleepHours,
+                                sleepGoalHours: currentGoals.sleepGoalHours,
+                                napCountToday: napCountToday,
+                                napMinutesToday: napMinutesToday,
+                                onNapHistory: {},
+                                onLogNap: {
+                                    flash("Nap logged!")
+                                }
+                            )
                             .padding(.horizontal, 16)
-
-                        // MARK: Sleep card
-                        SleepHealthCard(
-                            previousNightSleepHours: previousNightSleepHours,
-                            sleepGoalHours: currentGoals.sleepGoalHours,
-                            napCountToday: napCountToday,
-                            napMinutesToday: napMinutesToday,
-                            onNapHistory: {},
-                            onLogNap: {
-                                flash("Nap logged!")
+                            
+                            // MARK: Vitals card
+                            vitalsCard
+                                .padding(.horizontal, 16)
+                            
+                            // MARK: Exercise card
+                            exerciseCard
+                                .padding(.horizontal, 16)
+                            
+                            // MARK: Water card
+                            waterCard
+                                .padding(.horizontal, 16)
+                            
+                            // MARK: Steps card
+                            stepsCard
+                                .padding(.horizontal, 16)
+                            
+                            // MARK: Medications card
+                            NavigationLink(destination: MedicationPageView()) {
+                                medicationsEntryCard
                             }
-                        )
-                        .padding(.horizontal, 16)
-
-                        // MARK: Vitals card
-                        vitalsCard
+                            .buttonStyle(.plain)
                             .padding(.horizontal, 16)
-
-                        // MARK: Exercise card
-                        exerciseCard
+                            
+                            // MARK: Symptom Logger card
+                            NavigationLink(destination: SymptomLoggerView()) {
+                                symptomLoggerEntryCard
+                            }
+                            .buttonStyle(.plain)
                             .padding(.horizontal, 16)
-
-                        // MARK: Water card
-                        waterCard
-                            .padding(.horizontal, 16)
-
-                        // MARK: Steps card
-                        stepsCard
-                            .padding(.horizontal, 16)
-
-                        // MARK: Medications card
-                        NavigationLink(destination: MedicationPageView()) {
-                            medicationsEntryCard
+                            
+                            Spacer(minLength: 120)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
-
-                        // MARK: Symptom Logger card
-                        NavigationLink(destination: SymptomLoggerView()) {
-                            symptomLoggerEntryCard
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
-
-                        Spacer(minLength: 120)
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
             }
-        }
-        .completionBanner(isShowing: showBanner, message: bannerMessage)
-        .overlay {
-            if showWaterGoalCelebration {
-                WaterGoalCelebrationOverlay()
-                    .transition(.opacity)
-                    .zIndex(999)
+            .completionBanner(isShowing: showBanner, message: bannerMessage)
+            .overlay {
+                if showWaterGoalCelebration {
+                    WaterGoalCelebrationOverlay()
+                        .transition(.opacity)
+                        .zIndex(999)
+                }
             }
-        }
-        .sheet(isPresented: $showVitalsLog) {
-            VitalsLogSheet(
-                todayVitalsEntryCount: todayVitalsEntryCount,
-                onPremiumRequired: {
-                    showPremiumRequiredMessage()
-                },
-                onSave: { entry in
-                    guard canCreateVitalsEntry else {
-                        showPremiumRequiredMessage()
-                        return
-                    }
-                    modelContext.insert(entry)
-                    try? modelContext.save()
-                    writeVitalsToHealthKit(entry)
-                    HealthKitManager.shared.saveVitalsWidgetSnapshot(from: entry)
-                    _ = try? LunixiaPointsManager.awardVitalsLog(in: modelContext, id: entry.id.uuidString, at: entry.timestamp)
-                    flash("Vitals logged!")
-                }
-            )
-        }
-        .sheet(isPresented: $showExerciseLog) {
-            ExerciseLogSheet(
-                todayExerciseLogCount: todayExerciseLogCount,
-                onPremiumRequired: {
-                    showPremiumRequiredMessage()
-                },
-                onSave: { entry in
-                    modelContext.insert(entry)
-                    try? modelContext.save()
-                    writeExerciseToHealthKit(entry)
-                    _ = try? LunixiaPointsManager.awardExerciseLog(in: modelContext, id: entry.id.uuidString, at: entry.timestamp)
-                    flash("Exercise logged!")
-                }
-            )
-        }
-        .sheet(isPresented: $showWaterLog) {
-            WaterLogSheet(currentGoalOz: currentGoals.dailyWaterOz) { oz in
-                let entry = WaterEntry(oz: oz)
-                modelContext.insert(entry)
-                try? modelContext.save()
-                writeWaterToHealthKit(oz)
-                checkWaterGoalCelebration(
-                    previousWaterOz: max(localWaterOz - oz, healthKitWaterOz),
-                    addedWaterOz: oz
-                )
+            .modifier(AdaptiveBooleanHealthSheet(isPresented: $showVitalsLog, useFullScreen: shouldUseFullScreenSheets) {
+                vitalsLogSheetContent
+            })
+            .modifier(AdaptiveBooleanHealthSheet(isPresented: $showExerciseLog, useFullScreen: shouldUseFullScreenSheets) {
+                exerciseLogSheetContent
+            })
+            .modifier(AdaptiveBooleanHealthSheet(isPresented: $showWaterLog, useFullScreen: shouldUseFullScreenSheets) {
+                waterLogSheetContent
+            })
+            .modifier(AdaptiveBooleanHealthSheet(isPresented: $showWaterClear, useFullScreen: shouldUseFullScreenSheets) {
+                waterClearSheetContent
+            })
+            .modifier(AdaptiveBooleanHealthSheet(isPresented: $showGoalSheet, useFullScreen: shouldUseFullScreenSheets) {
+                goalSheetContent
+            })
+            .modifier(AdaptiveItemHealthSheet(item: $selectedVitals, useFullScreen: shouldUseFullScreenSheets) { entry in
+                vitalsDetailSheetContent(entry)
+            })
+            .modifier(AdaptiveItemHealthSheet(item: $selectedExercise, useFullScreen: shouldUseFullScreenSheets) { entry in
+                exerciseDetailSheetContent(entry)
+            })
+            .task {
+               ensureGoalsExist()
+                resetDisplayedHealthTotalsIfNeeded()
+                await refreshHealthKitTotals()
+                if let latest = vitalsEntries.first {
+                   HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
+                 }
+             }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                resetDisplayedHealthTotalsIfNeeded()
                 refreshHealthKitTotalsSoon()
-                _ = try? LunixiaPointsManager.awardWaterLog(in: modelContext, entryId: entry.id.uuidString)
-                flash("\(Int(oz))oz logged!")
+                if let latest = vitalsEntries.first {
+                    HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
+                }
             }
-        }
-        .sheet(isPresented: $showWaterClear) {
-            WaterClearSheet(currentWaterOz: todayWaterOz) { oz in
-                clearWaterAmount(oz)
-                refreshHealthKitTotalsSoon()
-                flash("\(Int(oz))oz cleared!")
+            .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+                resetDisplayedHealthTotalsIfNeeded()
             }
-        }
-        .sheet(isPresented: $showGoalSheet) {
-            GoalSheet(goals: currentGoals) {
-                ensureGoalsExist()
-                try? modelContext.save()
-                HealthKitManager.shared.saveHealthWidgetGoals(
-                    stepGoal: currentGoals.dailySteps,
-                    waterGoalOz: currentGoals.dailyWaterOz
-                )
-                flash("Goals saved!")
-            }
-        }
-        .sheet(item: $selectedVitals) { entry in
-            VitalsDetailView(entry: entry)
-        }
-        .sheet(item: $selectedExercise) { entry in
-            ExerciseDetailView(entry: entry)
-        }
-        .task {
-            ensureGoalsExist()
-            resetDisplayedHealthTotalsIfNeeded()
-            await refreshHealthKitTotals()
-            if let latest = vitalsEntries.first {
-                HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
-            }
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            resetDisplayedHealthTotalsIfNeeded()
-            refreshHealthKitTotalsSoon()
-            if let latest = vitalsEntries.first {
-                HealthKitManager.shared.saveVitalsWidgetSnapshot(from: latest)
-            }
-        }
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
-            resetDisplayedHealthTotalsIfNeeded()
-        }
         } // end NavigationStack
     }
+    
 
     // MARK: - Body & Emotional State Card
 
@@ -739,6 +697,111 @@ struct HealthTabView: View {
     }
 
     // MARK: - Helpers
+    
+    private func vitalsDetailSheetContent(_ entry: VitalsEntry) -> some View {
+        VitalsDetailView(entry: entry)
+    }
+
+    private func exerciseDetailSheetContent(_ entry: ExerciseEntry) -> some View {
+        ExerciseDetailView(entry: entry)
+    }
+    
+    private var vitalsLogSheetContent: some View {
+        VitalsLogSheet(
+            todayVitalsEntryCount: todayVitalsEntryCount,
+            onPremiumRequired: { showPremiumRequiredMessage() },
+            onSave: handleVitalsSave
+        )
+    }
+
+    private func handleVitalsSave(_ entry: VitalsEntry) {
+        guard canCreateVitalsEntry else {
+            showPremiumRequiredMessage()
+            return
+        }
+
+        modelContext.insert(entry)
+        try? modelContext.save()
+        writeVitalsToHealthKit(entry)
+        HealthKitManager.shared.saveVitalsWidgetSnapshot(from: entry)
+        _ = try? LunixiaPointsManager.awardVitalsLog(
+            in: modelContext,
+            id: entry.id.uuidString,
+            at: entry.timestamp
+        )
+        flash("Vitals logged!")
+    }
+    
+    private var exerciseLogSheetContent: some View {
+        ExerciseLogSheet(
+            todayExerciseLogCount: todayExerciseLogCount,
+            onPremiumRequired: { showPremiumRequiredMessage() },
+            onSave: handleExerciseSave
+        )
+    }
+
+    private func handleExerciseSave(_ entry: ExerciseEntry) {
+        modelContext.insert(entry)
+        try? modelContext.save()
+        writeExerciseToHealthKit(entry)
+        _ = try? LunixiaPointsManager.awardExerciseLog(
+            in: modelContext,
+            id: entry.id.uuidString,
+            at: entry.timestamp
+        )
+        flash("Exercise logged!")
+    }
+    
+    private var waterLogSheetContent: some View {
+        WaterLogSheet(currentGoalOz: currentGoals.dailyWaterOz) { oz in
+            handleWaterLogSave(oz)
+        }
+    }
+
+    private func handleWaterLogSave(_ oz: Double) {
+        let entry = WaterEntry(oz: oz)
+        modelContext.insert(entry)
+        try? modelContext.save()
+        writeWaterToHealthKit(oz)
+        checkWaterGoalCelebration(
+            previousWaterOz: max(localWaterOz - oz, healthKitWaterOz),
+            addedWaterOz: oz
+        )
+        refreshHealthKitTotalsSoon()
+        _ = try? LunixiaPointsManager.awardWaterLog(
+            in: modelContext,
+            entryId: entry.id.uuidString
+        )
+        flash("\(Int(oz))oz logged!")
+    }
+    
+    private var waterClearSheetContent: some View {
+        WaterClearSheet(currentWaterOz: todayWaterOz) { oz in
+            handleWaterClear(oz)
+        }
+    }
+
+    private func handleWaterClear(_ oz: Double) {
+        clearWaterAmount(oz)
+        refreshHealthKitTotalsSoon()
+        flash("\(Int(oz))oz cleared!")
+    }
+    
+    private var goalSheetContent: some View {
+        GoalSheet(goals: currentGoals) {
+            handleGoalSave()
+        }
+    }
+
+    private func handleGoalSave() {
+        ensureGoalsExist()
+        try? modelContext.save()
+        HealthKitManager.shared.saveHealthWidgetGoals(
+            stepGoal: currentGoals.dailySteps,
+            waterGoalOz: currentGoals.dailyWaterOz
+        )
+        flash("Goals saved!")
+    }
 
     @ViewBuilder
     private func DottedHorizontalProgressBar(progress: Double) -> some View {
@@ -1351,5 +1414,49 @@ struct WaterGoalCelebrationOverlay: View {
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+private struct AdaptiveBooleanHealthSheet<SheetContent: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    let useFullScreen: Bool
+    let sheetContent: () -> SheetContent
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: Binding(
+                get: { isPresented && !useFullScreen },
+                set: { if !$0 { isPresented = false } }
+            )) {
+                sheetContent()
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { isPresented && useFullScreen },
+                set: { if !$0 { isPresented = false } }
+            )) {
+                sheetContent()
+            }
+    }
+}
+
+private struct AdaptiveItemHealthSheet<Item: Identifiable, SheetContent: View>: ViewModifier {
+    @Binding var item: Item?
+    let useFullScreen: Bool
+    let sheetContent: (Item) -> SheetContent
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(item: Binding<Item?>(
+                get: { useFullScreen ? nil : item },
+                set: { item = $0 }
+            )) { selectedItem in
+                sheetContent(selectedItem)
+            }
+            .fullScreenCover(item: Binding<Item?>(
+                get: { useFullScreen ? item : nil },
+                set: { item = $0 }
+            )) { selectedItem in
+                sheetContent(selectedItem)
+            }
     }
 }

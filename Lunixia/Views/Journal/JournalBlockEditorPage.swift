@@ -410,6 +410,17 @@ struct JournalBlockEditorPage: View {
                     at: Date()
                 )
             }
+
+            // Persist mindful session to SwiftData (syncs via CloudKit)
+            let session = MindfulSession(
+                entryPersistentID: entryId,
+                bookPersistentID: book.persistentModelID.hashValue.description,
+                minutes: mindfulMinutes,
+                tags: workingEntry.tags,
+                date: Date()
+            )
+            modelContext.insert(session)
+            try? modelContext.save()
         }
 
         finishAndDismiss()

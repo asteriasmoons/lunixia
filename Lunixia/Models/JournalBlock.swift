@@ -25,6 +25,7 @@ enum JournalBlockType: String, Codable, CaseIterable {
     case divider
     case code
     case image
+    case drawing
     case table
     case toggle
     case bulletedList
@@ -74,6 +75,9 @@ final class JournalBlock {
 
     // Image block data. languageHint stores alignment: "" = left, "center" = center.
     var imageData: Data? = nil
+    
+    // PencilKit drawing block data
+    var drawingData: Data? = nil
 
     var entry: JournalEntry?
 
@@ -91,7 +95,8 @@ final class JournalBlock {
         isCalloutStyle: Bool = false,
         calloutEmoji: String = "",
         languageHint: String = "",
-        imageData: Data? = nil
+        imageData: Data? = nil,
+        drawingData: Data? = nil
     ) {
         self.id = UUID()
         self.typeRaw = type.rawValue
@@ -108,6 +113,7 @@ final class JournalBlock {
         self.calloutEmoji = calloutEmoji
         self.languageHint = languageHint
         self.imageData = imageData
+        self.drawingData = drawingData
     }
 
     var type: JournalBlockType {

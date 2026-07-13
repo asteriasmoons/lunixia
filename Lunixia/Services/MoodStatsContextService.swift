@@ -54,7 +54,7 @@ final class MoodStatsContextService {
     static let shared = MoodStatsContextService()
     private init() {}
 
-    private let baseURL = "https://lystaria-api-production.up.railway.app"
+    private let baseURL = "https://appapi.vox.com.im"
 
     func generateContext(_ payload: MoodStatsContextRequest) async throws -> MoodStatsContextResponse {
         guard let url = URL(string: "\(baseURL)/api/mood/stats/context") else {

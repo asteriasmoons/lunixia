@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import PencilKit
 
 // MARK: - Notification Names
 
@@ -401,7 +402,7 @@ struct JournalBlockEditorView: View {
              .toggleHeading1, .toggleHeading2, .toggleHeading3, .toggleHeading4, .toggleHeading5, .toggleHeading6,
              .toggle, .bulletedList, .numberedList, .checklist, .blockquote, .callout:
             return true
-        case .divider, .code, .image, .table:
+        case .divider, .code, .image, .drawing, .table:
             return false
         }
     }
@@ -613,6 +614,13 @@ struct JournalBlockEditorView: View {
             block.text = ""
             for s in (block.inlineStyles ?? []) { modelContext.delete(s) }
             block.inlineStyles = []
+        case .drawing:
+            if !wasToggleChild { block.parentBlockID = nil }
+            block.indentLevel = wasToggleChild ? block.indentLevel : 0
+            block.text = ""
+            block.drawingData = block.drawingData ?? Data()
+            for s in (block.inlineStyles ?? []) { modelContext.delete(s) }
+            block.inlineStyles = []
         case .paragraph, .heading1, .heading2, .heading3, .heading4, .heading5, .heading6, .blockquote:
             if !wasToggleChild { block.parentBlockID = nil }
             block.indentLevel = wasToggleChild ? block.indentLevel : 0
@@ -671,6 +679,7 @@ struct JournalBlockEditorView: View {
         case .divider:       return "Divider"
         case .code:          return "Code Block"
         case .image:         return "Image"
+        case .drawing:       return "Drawing"
         case .table:         return "Table"
         }
     }

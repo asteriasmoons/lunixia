@@ -5,9 +5,12 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 @main
 struct LunixiaApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     @StateObject private var appState = AppState()
     @StateObject private var storeManager = LunixiaStoreManager()
     static var sharedModelContainer: ModelContainer = {
@@ -44,6 +47,7 @@ struct LunixiaApp: App {
             LunixiaPointsResetLog.self,
             MoodChatSession.self,
             MoodPhoneStatsSnapshot.self,
+            MindfulSession.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -61,9 +65,43 @@ struct LunixiaApp: App {
                 .environmentObject(storeManager)
                 .task {
                     await MainActor.run {
-                        LunixiaPointsManager.scheduleWeeklyReset(modelContainer: LunixiaApp.sharedModelContainer)
+                        LunixiaPointsManager.scheduleWeeklyReset(
+                            modelContainer: LunixiaApp.sharedModelContainer
+                        )
+
+                        MedicationAutomationManager.run(
+                            in: LunixiaApp.sharedModelContainer.mainContext
+                        )
                     }
+
                     LunixiaMoonPhaseWidgetWriter.write()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else {
+                        return
+                    }
+
+                    Task { @MainActor in
+                        MedicationAutomationManager.run(
+                            in: LunixiaApp.sharedModelContainer.mainContext
+                        )
+                    }
+                }
+                .onReceive(
+                    Timer.publish(
+                        every: 300,
+                        on: .main,
+                        in: .common
+                    )
+                    .autoconnect()
+                ) { _ in
+                    guard scenePhase == .active else {
+                        return
+                    }
+
+                    MedicationAutomationManager.run(
+                        in: LunixiaApp.sharedModelContainer.mainContext
+                    )
                 }
         }
         .modelContainer(LunixiaApp.sharedModelContainer)

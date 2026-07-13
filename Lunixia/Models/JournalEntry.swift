@@ -185,6 +185,8 @@ final class JournalEntry {
                 return t.isEmpty ? nil : "▸ \(t)"
             case .image:
                 return block.imageData != nil ? "🖼️" : nil
+            case .drawing:
+                return block.drawingData != nil ? "Drawing" : nil
             }
         }
         let joined = pieces.joined(separator: "\n")

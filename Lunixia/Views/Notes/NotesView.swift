@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import Foundation
+import UIKit
 
 struct NotesView: View {
     @Environment(\.modelContext) private var modelContext
@@ -49,6 +50,8 @@ struct NotesView: View {
     
     @State private var showPremiumBanner = false
     @State private var premiumBannerMessage = ""
+    @State private var showCopiedBanner = false
+    @State private var copiedBannerHideTask: Task<Void, Never>?
 
     private var isPremium: Bool {
         storeManager.isPremium
@@ -423,10 +426,15 @@ struct NotesView: View {
                         .padding(.top, 12)
                         .padding(.bottom, 18)
                 }
+
+                copiedBanner(noteColor: noteColor)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
         .presentationBackground(noteColor)
+        .onDisappear {
+            resetCopiedBanner()
+        }
         .modifier(
             LunixiaAlertConfirm(
                 isPresented: $showDeleteConfirmation,
@@ -438,6 +446,31 @@ struct NotesView: View {
                 delete(note)
             }
         )
+    }
+
+    @ViewBuilder
+    private func copiedBanner(noteColor: Color) -> some View {
+        if showCopiedBanner {
+            VStack {
+                Text("Copied")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(noteColor)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.46), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
+                    .padding(.top, 18)
+
+                Spacer()
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .zIndex(100)
+        }
     }
 
     private func closeTabPopup() {
@@ -793,10 +826,29 @@ struct NotesView: View {
     private func viewerContent(for note: Note) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Content")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .shadow(color: .black.opacity(0.12), radius: 2, x: 0, y: 1)
+                HStack(alignment: .center) {
+                    Text("Content")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .shadow(color: .black.opacity(0.12), radius: 2, x: 0, y: 1)
+
+                    Spacer()
+
+                    Button {
+                        copyNoteContent(note.content)
+                    } label: {
+                        Image("copy")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(note.trimmedContent.isEmpty)
+                    .opacity(note.trimmedContent.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("Copy content")
+                }
 
                 Text(note.trimmedContent.isEmpty ? "Empty note" : note.content)
                     .font(.system(size: 15, weight: .regular))
@@ -1450,9 +1502,13 @@ struct NotesView: View {
         isCreatingNote = true
     }
 
-    private func open(_ note: Note) { viewingNote = note }
+    private func open(_ note: Note) {
+        resetCopiedBanner()
+        viewingNote = note
+    }
 
     private func startEditing(_ note: Note) {
+        resetCopiedBanner()
         viewingNote = nil
         selectedNote = note
         draftContent = note.content
@@ -1467,6 +1523,7 @@ struct NotesView: View {
 
     private func closeViewer() {
         voiceManager.stopRecording()
+        resetCopiedBanner()
         viewingNote = nil
         showDeleteConfirmation = false
     }
@@ -1563,6 +1620,37 @@ struct NotesView: View {
                 showPremiumBanner = false
             }
         }
+    }
+
+    private func copyNoteContent(_ text: String) {
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { return }
+
+        UIPasteboard.general.string = text
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        copiedBannerHideTask?.cancel()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
+            showCopiedBanner = true
+        }
+
+        copiedBannerHideTask = Task {
+            try? await Task.sleep(for: .seconds(1.7))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    showCopiedBanner = false
+                }
+                copiedBannerHideTask = nil
+            }
+        }
+    }
+
+    private func resetCopiedBanner() {
+        copiedBannerHideTask?.cancel()
+        copiedBannerHideTask = nil
+        showCopiedBanner = false
     }
 }
 
