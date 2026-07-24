@@ -411,6 +411,14 @@ struct JournalBlockEditorPage: View {
                 )
             }
 
+            // Award self-care points for mindful minutes
+            _ = try? LunixiaPointsManager.awardMindfulMinutes(
+                in: modelContext,
+                entryId: entryId,
+                minutes: mindfulMinutes,
+                at: Date()
+            )
+
             // Persist mindful session to SwiftData (syncs via CloudKit)
             let session = MindfulSession(
                 entryPersistentID: entryId,

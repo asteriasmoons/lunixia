@@ -238,7 +238,7 @@ struct MoodDetailView: View {
         )) {
             MoodInsightsHistoryView(
                 userId: appState.currentAppleUserId ?? "",
-                moodEntryId: entry.id.uuidString
+                moodEntryId: nil
             )
         }
         .fullScreenCover(isPresented: Binding(
@@ -247,7 +247,7 @@ struct MoodDetailView: View {
         )) {
             MoodInsightsHistoryView(
                 userId: appState.currentAppleUserId ?? "",
-                moodEntryId: entry.id.uuidString
+                moodEntryId: nil
             )
         }
     }

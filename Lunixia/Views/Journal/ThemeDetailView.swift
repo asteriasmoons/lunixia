@@ -222,7 +222,7 @@ struct ThemeDetailView: View {
 
     private func relatedThemesCard(_ data: ThemeDetailResponse) -> some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
                     Image("puzzlehand")
                         .renderingMode(.template)
@@ -235,23 +235,63 @@ struct ThemeDetailView: View {
                         .foregroundStyle(.white)
                 }
 
-                ForEach(data.relatedThemes.prefix(6), id: \.name) { item in
-                    HStack(spacing: 10) {
-                        Text(item.name)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(LGradients.tag)
-                            .lineLimit(1)
+                let items = Array(data.relatedThemes.prefix(6))
+                let columns = [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                ]
 
-                        Spacer()
+                if let hero = items.first {
+                    relatedThemeTile(hero, isHero: true)
+                }
 
-                        Text("\(item.percentage)% of entries")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(LColors.textSecondary)
+                if items.count > 1 {
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(Array(items.dropFirst()), id: \.name) { item in
+                            relatedThemeTile(item, isHero: false)
+                        }
                     }
-                    .padding(.vertical, 2)
                 }
             }
         }
+    }
+
+    private func relatedThemeTile(_ item: RelatedThemeItem, isHero: Bool) -> some View {
+        VStack(spacing: isHero ? 6 : 4) {
+            Text(item.name)
+                .font(.system(size: isHero ? 16 : 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+
+            Text("\(item.coOccurrences) \(item.coOccurrences == 1 ? "co-occurrence" : "co-occurrences")")
+                .font(.system(size: isHero ? 13 : 11, weight: .semibold))
+                .foregroundStyle(LColors.textSecondary)
+
+            Text("\(item.percentage)%")
+                .font(.system(size: isHero ? 11 : 10, weight: .bold))
+                .foregroundStyle(LGradients.tag)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, isHero ? 18 : 14)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(isHero ? 0.10 : 0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(isHero ? 0.22 : 0.14),
+                            Color.white.opacity(0.06),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
     }
 
     // MARK: - Entries List

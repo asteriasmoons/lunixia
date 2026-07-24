@@ -369,6 +369,10 @@ struct SymptomLogSheet: View {
                 VStack(alignment: .leading, spacing: 24) {
 
                     HStack {
+                        Text(isEditing ? "Edit Entry" : "Log Symptoms")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+                        Spacer()
                         Button { dismiss() } label: {
                             Image("xmarkwavy")
                                 .renderingMode(.template).resizable().scaledToFit()
@@ -376,12 +380,6 @@ struct SymptomLogSheet: View {
                                 .foregroundStyle(LGradients.header)
                         }
                         .buttonStyle(.plain)
-                        Spacer()
-                        Text(isEditing ? "Edit Entry" : "Log Symptoms")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundStyle(LGradients.header)
-                        Spacer()
-                        Color.clear.frame(width: 22, height: 22)
                     }
 
                     // ── Date ─────────────────────────────────────────────
@@ -482,24 +480,16 @@ struct SymptomLogSheet: View {
 
     @ViewBuilder
     private func sheetSection<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-        let isTintedSection = label == "symptoms" || label == "severity" || label == "note (optional)"
-
         VStack(alignment: .leading, spacing: 8) {
             Text(label.uppercased())
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(LColors.textSecondary.opacity(0.55))
                 .kerning(1.2)
-            VStack(spacing: 0) {
-                content()
+            GlassCard(cornerRadius: 14, padding: 0) {
+                VStack(spacing: 0) {
+                    content()
+                }
             }
-            .background(
-                isTintedSection ? AnyShapeStyle(LGradients.blue.opacity(0.12)) : AnyShapeStyle(LColors.glassSurface),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isTintedSection ? AnyShapeStyle(LGradients.header) : AnyShapeStyle(LColors.glassBorder), lineWidth: isTintedSection ? 1.2 : 0.75)
-            )
         }
     }
 
@@ -583,6 +573,10 @@ struct SymptomDetailSheet: View {
                 VStack(alignment: .leading, spacing: 24) {
 
                     HStack {
+                        Text("Entry Detail")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+                        Spacer()
                         Button { dismiss() } label: {
                             Image("xmarkwavy")
                                 .renderingMode(.template).resizable().scaledToFit()
@@ -590,12 +584,6 @@ struct SymptomDetailSheet: View {
                                 .foregroundStyle(LGradients.header)
                         }
                         .buttonStyle(.plain)
-                        Spacer()
-                        Text("Entry Detail")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundStyle(LGradients.header)
-                        Spacer()
-                        Color.clear.frame(width: 22, height: 22)
                     }
 
                     GlassCard(padding: 16) {

@@ -15,6 +15,12 @@ struct MoodInsightsHistoryView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedAnalysis: MoodAnalysisHistoryItem?
+    @State private var visibleCount = 6
+    private let pageSize = 6
+
+    private var displayedAnalyses: [MoodAnalysisHistoryItem] {
+        Array(analyses.prefix(visibleCount))
+    }
 
     var body: some View {
         ZStack {
@@ -76,13 +82,50 @@ struct MoodInsightsHistoryView: View {
     private var historyList: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 14) {
-                ForEach(analyses) { item in
+                ForEach(displayedAnalyses) { item in
                     Button {
                         selectedAnalysis = item
                     } label: {
                         historyCard(item)
                     }
                     .buttonStyle(.plain)
+                }
+
+                if analyses.count > pageSize {
+                    VStack(spacing: 10) {
+                        if visibleCount < analyses.count {
+                            Button {
+                                withAnimation { visibleCount = min(visibleCount + pageSize, analyses.count) }
+                            } label: {
+                                Text("Load More")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 9)
+                                    .background(LColors.accentGradient, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if visibleCount > pageSize {
+                            Button {
+                                withAnimation { visibleCount = pageSize }
+                            } label: {
+                                Text("See Less")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LColors.textSecondary)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 9)
+                                    .background(
+                                        Capsule().fill(LColors.glassSurface)
+                                            .overlay(Capsule().strokeBorder(LColors.glassBorder, lineWidth: 1))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
                 }
             }
             .padding(.horizontal, 22)

@@ -199,6 +199,8 @@ struct SelfCarePointsView: View {
                                 pinkDivider
                                 earnRow(label: "Daily Intention",    assetIcon: "starfill",  sfIcon: nil,              points: LunixiaPointsManager.dailyIntentionPoints)
                                 pinkDivider
+                                earnRow(label: "Mindful Minutes",   assetIcon: "sunflower", sfIcon: nil,              points: LunixiaPointsManager.mindfulMinutePoints, perUnit: "per min")
+                                pinkDivider
                                 earnRow(label: "Water Goal Reached", assetIcon: nil,         sfIcon: "target",         points: LunixiaPointsManager.waterGoalPoints)
                                 pinkDivider
                                 earnRow(label: "Step Goal Reached",  assetIcon: nil,         sfIcon: "target",         points: LunixiaPointsManager.stepGoalPoints)
@@ -417,13 +419,17 @@ struct SelfCarePointsView: View {
             Image("starfill")
                 .renderingMode(.template).resizable().scaledToFit()
                 .frame(width: 16, height: 16)
+        case .mindfulMinutes:
+            Image("sunflower")
+                .renderingMode(.template).resizable().scaledToFit()
+                .frame(width: 16, height: 16)
         }
     }
 
     // MARK: - Earn row (asset or SF icon)
 
     @ViewBuilder
-    private func earnRow(label: String, assetIcon: String?, sfIcon: String?, points: Int) -> some View {
+    private func earnRow(label: String, assetIcon: String?, sfIcon: String?, points: Int, perUnit: String? = nil) -> some View {
         HStack(spacing: 10) {
             ZStack {
                 if let asset = assetIcon {
@@ -443,9 +449,15 @@ struct SelfCarePointsView: View {
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(pink.opacity(0.85))
             Spacer()
-            Text("+\(points)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(pink)
+            if let unit = perUnit {
+                Text("+\(points) \(unit)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(pink)
+            } else {
+                Text("+\(points)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(pink)
+            }
         }
     }
 

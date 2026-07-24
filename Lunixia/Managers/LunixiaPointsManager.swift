@@ -65,6 +65,7 @@ enum LunixiaPointsManager {
     static let dailyIntentionPoints   = 10
     static let dailyTarotPoints      = 10
     static let dailyLenormandPoints  = 10
+    static let mindfulMinutePoints   = 1   // 1 point per mindful minute
 
     // MARK: - Leveling (100 pts per level)
 
@@ -273,20 +274,43 @@ enum LunixiaPointsManager {
             weekStartDayKey: profile.currentWeekStartDayKey
         )
 
-        if !alreadyLogged {
-            let snap = LunixiaPointsResetLog(
-                userId: userId,
-                weekStartDayKey: profile.currentWeekStartDayKey,
-                resetAt: now,
-                pointsBeforeReset: profile.currentPoints,
-                levelBeforeReset: profile.level
-            )
-            ctx.insert(snap)
+        if alreadyLogged {
+            // A reset was already recorded for the old week (e.g. another device
+            // handled it, then CloudKit synced a stale profile key here).
+            // Just fix the key — do NOT zero out points.
+            profile.currentWeekStartDayKey = currentWeekKey
+            profile.updatedAt = now
+            try? ctx.save()
+            savePointsWidgetSnapshot(from: profile, in: ctx)
+            return
         }
 
-        profile.currentPoints = 0
-        profile.level = 0
-        profile.lastWeeklyResetAt = now
+        // --- Genuine catch-up reset ---
+        // Parse the current week's Monday so we can preserve current-week points.
+        let mondayDate = parseDayKey(currentWeekKey)
+            ?? Calendar.current.startOfDay(for: now)
+
+        // Points earned after the Monday boundary belong to the new week
+        // and should survive the reset.
+        let currentWeekPoints = pointsEarnedSince(
+            in: ctx, userId: userId, since: mondayDate
+        )
+
+        let oldWeekPoints = max(0, profile.currentPoints - currentWeekPoints)
+
+        let snap = LunixiaPointsResetLog(
+            userId: userId,
+            weekStartDayKey: profile.currentWeekStartDayKey,
+            resetAt: mondayDate,
+            pointsBeforeReset: oldWeekPoints,
+            levelBeforeReset: level(for: oldWeekPoints)
+        )
+        ctx.insert(snap)
+
+        // Keep only points earned in the current week
+        profile.currentPoints = currentWeekPoints
+        profile.level = level(for: profile.currentPoints)
+        profile.lastWeeklyResetAt = mondayDate
         profile.currentWeekStartDayKey = currentWeekKey
         profile.updatedAt = now
 
@@ -335,6 +359,31 @@ enum LunixiaPointsManager {
         return cal.date(byAdding: .day, value: 7, to: candidateMonday) ?? candidateMonday
     }
 
+    private static func parseDayKey(_ key: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: key)
+    }
+
+    private static func pointsEarnedSince(
+        in modelContext: ModelContext,
+        userId: String,
+        since: Date
+    ) -> Int {
+        do {
+            let descriptor = FetchDescriptor<LunixiaPointEntry>(
+                predicate: #Predicate {
+                    $0.userId == userId && $0.createdAt >= since
+                }
+            )
+            return try modelContext.fetch(descriptor)
+                .reduce(0) { $0 + max(0, $1.points) }
+        } catch {
+            return 0
+        }
+    }
+
     private static func hasResetLog(
         in modelContext: ModelContext,
         userId: String,
@@ -347,6 +396,58 @@ enum LunixiaPointsManager {
         )
 
         return ((try? modelContext.fetch(descriptor)) ?? []).isEmpty == false
+    }
+
+    // MARK: - One-time patch for faulty mid-week reset (Jul 23 2026)
+
+    private static let midWeekResetPatchKey = "lunixia.points.midWeekResetPatch.v1"
+
+    @MainActor
+    static func patchFaultyMidWeekReset(modelContainer: ModelContainer) {
+        guard !UserDefaults.standard.bool(forKey: midWeekResetPatchKey) else { return }
+        // Mark as applied immediately so it never runs twice
+        UserDefaults.standard.set(true, forKey: midWeekResetPatchKey)
+
+        let ctx = modelContainer.mainContext
+
+        guard let userId = try? resolveUserId(in: ctx),
+              let profile = try? fetchProfile(in: ctx, userId: userId) else { return }
+
+        let cal = Calendar.current
+
+        do {
+            let descriptor = FetchDescriptor<LunixiaPointsResetLog>(
+                predicate: #Predicate { $0.userId == userId },
+                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+            )
+            let logs = try ctx.fetch(descriptor)
+
+            // Walk the most recent automatic reset logs to find one on a non-Monday
+            for log in logs {
+                guard !log.weekStartDayKey.hasPrefix("manual") else { continue }
+
+                let weekday = cal.component(.weekday, from: log.resetAt)
+                if weekday != 2 {
+                    // Faulty non-Monday reset — restore the lost points
+                    let lostPoints = max(0, log.pointsBeforeReset)
+                    profile.currentPoints += lostPoints
+                    profile.level = level(for: profile.currentPoints)
+                    profile.updatedAt = Date()
+
+                    // Remove the faulty log entry
+                    ctx.delete(log)
+
+                    try ctx.save()
+                    savePointsWidgetSnapshot(from: profile, in: ctx)
+                    break
+                } else {
+                    // First automatic reset found is a valid Monday — nothing to patch
+                    break
+                }
+            }
+        } catch {
+            // Silently fail — patch is best-effort
+        }
     }
 
     // MARK: - Convenience award methods
@@ -426,6 +527,21 @@ enum LunixiaPointsManager {
             sourceKey: "dailyLenormand:\(id)",
             points: dailyLenormandPoints,
             title: "Daily Lenormand",
+            earnedAt: date
+        )
+    }
+
+    @discardableResult
+    static func awardMindfulMinutes(in ctx: ModelContext, entryId: String, minutes: Int, at date: Date = Date()) throws -> Bool {
+        let safe = max(0, minutes)
+        guard safe > 0 else { return false }
+        return try awardPoints(
+            in: ctx,
+            sourceType: .mindfulMinutes,
+            sourceId: entryId,
+            sourceKey: "mindfulMinutes:\(entryId)",
+            points: safe * mindfulMinutePoints,
+            title: "\(safe) Mindful Min",
             earnedAt: date
         )
     }

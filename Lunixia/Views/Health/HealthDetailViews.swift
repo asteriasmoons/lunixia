@@ -13,21 +13,26 @@ struct VitalsDetailView: View {
     @Query(sort: \VitalsEntry.timestamp, order: .reverse) private var allEntries: [VitalsEntry]
 
     let entry: VitalsEntry
+    @State private var visibleCount = 4
+    private let pageSize = 4
+
     private var isPremium: Bool {
         storeManager.isPremium
     }
 
-    private var visibleEntries: [VitalsEntry] {
-        if isPremium {
-            return allEntries
-        }
-
+    private var allFiltered: [VitalsEntry] {
+        if isPremium { return allEntries }
         let cutoff = LunixiaLimitsManager.historyCutoffDate(
             days: LunixiaLimitsManager.vitalsHistoryDaysLimit(isPremium: false)
         )
-
         return allEntries.filter { $0.timestamp >= cutoff }
     }
+
+    private var visibleEntries: [VitalsEntry] {
+        Array(allFiltered.prefix(visibleCount))
+    }
+
+    private var totalCount: Int { allFiltered.count }
 
     var body: some View {
         ZStack {
@@ -36,6 +41,10 @@ struct VitalsDetailView: View {
 
             VStack(spacing: 0) {
                 HStack {
+                    Text("Vitals History")
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
                     Button { dismiss() } label: {
                         Image("xmarkwavy")
                             .renderingMode(.template)
@@ -45,12 +54,6 @@ struct VitalsDetailView: View {
                             .foregroundStyle(LGradients.header)
                     }
                     .buttonStyle(.plain)
-                    Spacer()
-                    Text("Vitals History")
-                        .font(.system(size: 22, weight: .black, design: .rounded))
-                        .foregroundStyle(LGradients.header)
-                    Spacer()
-                    Color.clear.frame(width: 22, height: 22)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -80,6 +83,43 @@ struct VitalsDetailView: View {
                                     }
                                 }
                             }
+                        }
+
+                        if totalCount > pageSize {
+                            VStack(spacing: 10) {
+                                if visibleCount < totalCount {
+                                    Button {
+                                        withAnimation { visibleCount = min(visibleCount + pageSize, totalCount) }
+                                    } label: {
+                                        Text("Load More")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 9)
+                                            .background(LColors.accentGradient, in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                if visibleCount > pageSize {
+                                    Button {
+                                        withAnimation { visibleCount = pageSize }
+                                    } label: {
+                                        Text("See Less")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundStyle(LColors.textSecondary)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 9)
+                                            .background(
+                                                Capsule().fill(LColors.glassSurface)
+                                                    .overlay(Capsule().strokeBorder(LColors.glassBorder, lineWidth: 1))
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -116,21 +156,26 @@ struct ExerciseDetailView: View {
     @Query(sort: \ExerciseEntry.timestamp, order: .reverse) private var allEntries: [ExerciseEntry]
 
     let entry: ExerciseEntry
+    @State private var visibleCount = 6
+    private let pageSize = 6
+
     private var isPremium: Bool {
         storeManager.isPremium
     }
 
-    private var visibleEntries: [ExerciseEntry] {
-        if isPremium {
-            return allEntries
-        }
-
+    private var allFiltered: [ExerciseEntry] {
+        if isPremium { return allEntries }
         let cutoff = LunixiaLimitsManager.historyCutoffDate(
             days: LunixiaLimitsManager.exerciseHistoryDaysLimit(isPremium: false)
         )
-
         return allEntries.filter { $0.timestamp >= cutoff }
     }
+
+    private var visibleEntries: [ExerciseEntry] {
+        Array(allFiltered.prefix(visibleCount))
+    }
+
+    private var totalCount: Int { allFiltered.count }
 
     var body: some View {
         ZStack {
@@ -139,6 +184,10 @@ struct ExerciseDetailView: View {
 
             VStack(spacing: 0) {
                 HStack {
+                    Text("Exercise History")
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
                     Button { dismiss() } label: {
                         Image("xmarkwavy")
                             .renderingMode(.template)
@@ -148,12 +197,6 @@ struct ExerciseDetailView: View {
                             .foregroundStyle(LGradients.header)
                     }
                     .buttonStyle(.plain)
-                    Spacer()
-                    Text("Exercise History")
-                        .font(.system(size: 22, weight: .black, design: .rounded))
-                        .foregroundStyle(LGradients.header)
-                    Spacer()
-                    Color.clear.frame(width: 22, height: 22)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -182,6 +225,43 @@ struct ExerciseDetailView: View {
                                     }
                                 }
                             }
+                        }
+
+                        if totalCount > pageSize {
+                            VStack(spacing: 10) {
+                                if visibleCount < totalCount {
+                                    Button {
+                                        withAnimation { visibleCount = min(visibleCount + pageSize, totalCount) }
+                                    } label: {
+                                        Text("Load More")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 9)
+                                            .background(LColors.accentGradient, in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                if visibleCount > pageSize {
+                                    Button {
+                                        withAnimation { visibleCount = pageSize }
+                                    } label: {
+                                        Text("See Less")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundStyle(LColors.textSecondary)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 9)
+                                            .background(
+                                                Capsule().fill(LColors.glassSurface)
+                                                    .overlay(Capsule().strokeBorder(LColors.glassBorder, lineWidth: 1))
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
                         }
                     }
                     .padding(.horizontal, 16)

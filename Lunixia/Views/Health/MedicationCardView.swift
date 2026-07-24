@@ -733,7 +733,19 @@ struct MedAddEditSheet: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 28) {
 
-                    medSheetHeader(title: isAdd ? "Add Medication" : "Edit Medication") { dismiss() }
+                    HStack {
+                        Text(isAdd ? "Add Medication" : "Edit Medication")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Image("xmarkwavy")
+                                .renderingMode(.template).resizable().scaledToFit()
+                                .frame(width: 22, height: 22)
+                                .foregroundStyle(LGradients.header)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     // ── Details ───────────────────────────────────────────
                     fieldSection(label: "details") {
@@ -1142,7 +1154,19 @@ struct MedRefillConfigSheet: View {
             LunixiaBackground().ignoresSafeArea()
             VStack(alignment: .leading, spacing: 24) {
 
-                medSheetHeader(title: "Refill Date") { dismiss() }
+                HStack {
+                    Text("Refill Date")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image("xmarkwavy")
+                            .renderingMode(.template).resizable().scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(LGradients.header)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 GlassCard(padding: 18) {
                     VStack(alignment: .leading, spacing: 16) {
@@ -1722,7 +1746,19 @@ struct MedDirectRefillSheet: View {
             LunixiaBackground().ignoresSafeArea()
             VStack(alignment: .leading, spacing: 24) {
 
-                medSheetHeader(title: "Refill Date") { dismiss() }
+                HStack {
+                    Text("Refill Date")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image("xmarkwavy")
+                            .renderingMode(.template).resizable().scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(LGradients.header)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 GlassCard(padding: 18) {
                     VStack(alignment: .leading, spacing: 16) {
@@ -1785,7 +1821,19 @@ struct MedInventorySheet: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
 
-                    medSheetHeader(title: "Adjust Inventory") { dismiss() }
+                    HStack {
+                        Text("Adjust Inventory")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundStyle(LGradients.header)
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Image("xmarkwavy")
+                                .renderingMode(.template).resizable().scaledToFit()
+                                .frame(width: 22, height: 22)
+                                .foregroundStyle(LGradients.header)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     HStack(spacing: 10) {
                         inventoryTile(label: "Name",    value: medication.name)
@@ -1890,8 +1938,10 @@ struct MedHistorySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
     @State private var entryPendingDeletion: LunixiaMedHistoryEntry? = nil
+    @State private var visibleCount = 6
+    private let pageSize = 6
 
-    private var visibleEntries: [LunixiaMedHistoryEntry] {
+    private var allFiltered: [LunixiaMedHistoryEntry] {
         let sortedEntries = (medication.historyEntries ?? []).sorted { $0.createdAt > $1.createdAt }
 
         if isPremium {
@@ -1905,17 +1955,30 @@ struct MedHistorySheet: View {
         return sortedEntries.filter { $0.createdAt >= cutoff }
     }
 
+    private var visibleEntries: [LunixiaMedHistoryEntry] {
+        Array(allFiltered.prefix(visibleCount))
+    }
+
+    private var totalCount: Int { allFiltered.count }
+
     var body: some View {
         ZStack {
             LunixiaBackground().ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
-                medSheetHeader(title: "History") { dismiss() }
-                    .padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 4)
-
-                Text(medication.name)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(LColors.textSecondary)
-                    .padding(.horizontal, 20).padding(.bottom, 16)
+                HStack {
+                    Text("History")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image("xmarkwavy")
+                            .renderingMode(.template).resizable().scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(LGradients.header)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 16)
 
                 let entries = visibleEntries
                 if entries.isEmpty {
@@ -1927,6 +1990,43 @@ struct MedHistorySheet: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 10) {
                             ForEach(entries) { entry in historyRow(entry) }
+
+                            if totalCount > pageSize {
+                                VStack(spacing: 10) {
+                                    if visibleCount < totalCount {
+                                        Button {
+                                            withAnimation { visibleCount = min(visibleCount + pageSize, totalCount) }
+                                        } label: {
+                                            Text("Load More")
+                                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 9)
+                                                .background(LColors.accentGradient, in: Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+
+                                    if visibleCount > pageSize {
+                                        Button {
+                                            withAnimation { visibleCount = pageSize }
+                                        } label: {
+                                            Text("See Less")
+                                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                .foregroundStyle(LColors.textSecondary)
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 9)
+                                                .background(
+                                                    Capsule().fill(LColors.glassSurface)
+                                                        .overlay(Capsule().strokeBorder(LColors.glassBorder, lineWidth: 1))
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 4)
+                            }
                         }
                         .padding(.horizontal, 20).padding(.bottom, 40)
                     }

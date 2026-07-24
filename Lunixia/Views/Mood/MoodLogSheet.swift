@@ -36,9 +36,9 @@ struct MoodLogSheet: View {
 
     private var pageTitle: String {
         switch page {
-        case 0: return "how are you feeling?"
-        case 1: return "what have you been up to?"
-        case 2: return "anything to add?"
+        case 0: return "How Are You Feeling?"
+        case 1: return "What Have You Been Up To?"
+        case 2: return "Anything To Add?"
         default: return ""
         }
     }
@@ -52,6 +52,12 @@ struct MoodLogSheet: View {
 
                 // MARK: Header
                 HStack {
+                    Text(pageTitle)
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundStyle(LGradients.header)
+
+                    Spacer()
+
                     Button { dismiss() } label: {
                         Image("xmarkwavy")
                             .renderingMode(.template)
@@ -61,16 +67,6 @@ struct MoodLogSheet: View {
                             .foregroundStyle(LGradients.header)
                     }
                     .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Text(pageTitle)
-                        .font(.system(size: 17, weight: .black, design: .rounded))
-                        .foregroundStyle(LGradients.header)
-
-                    Spacer()
-
-                    Color.clear.frame(width: 22, height: 22)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)

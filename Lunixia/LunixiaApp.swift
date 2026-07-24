@@ -69,6 +69,10 @@ struct LunixiaApp: App {
                             modelContainer: LunixiaApp.sharedModelContainer
                         )
 
+                        LunixiaPointsManager.patchFaultyMidWeekReset(
+                            modelContainer: LunixiaApp.sharedModelContainer
+                        )
+
                         MedicationAutomationManager.run(
                             in: LunixiaApp.sharedModelContainer.mainContext
                         )
