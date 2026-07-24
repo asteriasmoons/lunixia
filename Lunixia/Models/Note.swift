@@ -6,13 +6,38 @@
 import Foundation
 import SwiftData
 
+struct NoteChecklistItem: Codable, Identifiable, Equatable {
+    var id: UUID
+    var title: String
+    var isCompleted: Bool
+    var createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        title: String = "",
+        isCompleted: Bool = false,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.isCompleted = isCompleted
+        self.createdAt = createdAt
+    }
+}
+
 @Model
 final class Note {
+    static let minimumFontSize: Double = 12
+    static let maximumFontSize: Double = 28
+
     var id: UUID = UUID()
 
     // Main content
     var content: String = ""
     var colorHex: String = "#6B4CDE"
+    var checklistItemsJSON: String = ""
+    var fontID: String = "system"
+    var fontSize: Double = 15
 
     // Original stored label — kept intact so existing data is not lost
     var label: String = ""
@@ -33,6 +58,9 @@ final class Note {
         id: UUID = UUID(),
         content: String = "",
         colorHex: String = "#6B4CDE",
+        checklistItemsJSON: String = "",
+        fontID: String = "system",
+        fontSize: Double = 15,
         label: String = "",
         label2: String = "",
         tabName: String = "All Notes",
@@ -44,6 +72,9 @@ final class Note {
         self.id = id
         self.content = content
         self.colorHex = colorHex
+        self.checklistItemsJSON = checklistItemsJSON
+        self.fontID = fontID
+        self.fontSize = fontSize
         self.label = label
         self.label2 = label2
         self.tabName = tabName
@@ -63,6 +94,10 @@ final class Note {
         content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    var resolvedFontSize: Double {
+        min(Self.maximumFontSize, max(Self.minimumFontSize, fontSize))
+    }
+
     // Prevent saving empty notes if you want
     var isEmpty: Bool {
         trimmedContent.isEmpty
@@ -70,8 +105,15 @@ final class Note {
 
     // Used for sticky note preview cards
     var previewText: String {
-        trimmedContent
-            .replacingOccurrences(of: "\n", with: " ")
+        let textPreview = trimmedContent.replacingOccurrences(of: "\n", with: " ")
+        let checklistPreview = checklistItems
+            .map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        if textPreview.isEmpty { return checklistPreview }
+        if checklistPreview.isEmpty { return textPreview }
+        return [textPreview, checklistPreview].joined(separator: " ")
     }
 
     /// Both labels as an array, omitting empty entries.
@@ -79,5 +121,24 @@ final class Note {
         [label, label2]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+
+    var checklistItems: [NoteChecklistItem] {
+        get {
+            guard !checklistItemsJSON.isEmpty,
+                  let data = checklistItemsJSON.data(using: .utf8),
+                  let decoded = try? JSONDecoder().decode([NoteChecklistItem].self, from: data)
+            else { return [] }
+            return decoded
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue),
+                  let encoded = String(data: data, encoding: .utf8)
+            else {
+                checklistItemsJSON = ""
+                return
+            }
+            checklistItemsJSON = encoded
+        }
     }
 }

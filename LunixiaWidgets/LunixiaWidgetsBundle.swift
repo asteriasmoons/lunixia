@@ -24,5 +24,6 @@ struct LunixiaWidgetsBundle: WidgetBundle {
         LunixiaPointsLargeWidget()
         LunixiaPointsMediumWidget()
         LunixiaMoonPhaseMediumWidget()
+        LunixiaStickyNoteWidget()
     }
 }

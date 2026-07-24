@@ -75,6 +75,11 @@ struct LunixiaApp: App {
                     }
 
                     LunixiaMoonPhaseWidgetWriter.write()
+                    await MainActor.run {
+                        LunixiaStickyNoteWidgetWriter.write(
+                            in: LunixiaApp.sharedModelContainer.mainContext
+                        )
+                    }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else {
@@ -83,6 +88,9 @@ struct LunixiaApp: App {
 
                     Task { @MainActor in
                         MedicationAutomationManager.run(
+                            in: LunixiaApp.sharedModelContainer.mainContext
+                        )
+                        LunixiaStickyNoteWidgetWriter.write(
                             in: LunixiaApp.sharedModelContainer.mainContext
                         )
                     }

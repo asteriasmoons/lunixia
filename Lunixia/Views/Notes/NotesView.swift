@@ -22,6 +22,9 @@ struct NotesView: View {
     @State private var selectedNote: Note?
     @State private var viewingNote: Note?
     @State private var draftContent: String = ""
+    @State private var draftChecklistItems: [NoteChecklistItem] = []
+    @State private var draftFontID: String = NoteFontOption.system.rawValue
+    @State private var draftFontSize: Double = 15
     @State private var draftLabel1: String = ""
     @State private var draftLabel2: String = ""
     @State private var draftColorHex: String = "#6B4CDE"
@@ -64,6 +67,12 @@ struct NotesView: View {
     
     private var settings: UserSettings? { userSettings.first }
     private var notesDefaultTab: String { settings?.notesDefaultTab ?? "" }
+    private var draftFontOption: NoteFontOption {
+        NoteFontOption.option(for: draftFontID)
+    }
+    private var draftFontSizeValue: CGFloat {
+        CGFloat(draftFontSize)
+    }
     
     private var nonRootTabs: [String] {
         notesTabs.filter { $0 != rootTabName }
@@ -154,11 +163,16 @@ struct NotesView: View {
                     selectedTab = resolved
                 }
                 loadCollapsedPinnedIDs()
+                LunixiaStickyNoteWidgetWriter.write(notes: notes, tabs: tabs)
+            }
+            .onChange(of: notes) { _, newNotes in
+                LunixiaStickyNoteWidgetWriter.write(notes: newNotes, tabs: tabs)
             }
             .onChange(of: tabs) { _, _ in
                 if !notesTabs.contains(selectedTab) {
                     selectedTab = rootTabName
                 }
+                LunixiaStickyNoteWidgetWriter.write(notes: notes, tabs: tabs)
             }
             .onChange(of: collapsedPinnedIDs) { _, newValue in
                 collapsedPinnedIDsStorage = newValue.sorted().joined(separator: "\n")
@@ -728,6 +742,9 @@ struct NotesView: View {
                             action: {
                                 open(note)
                             },
+                            onToggleChecklistItem: { item in
+                                toggleChecklistItem(item, in: note)
+                            },
                             onMoveToTab: { tab in
                                 move(note, to: tab)
                             },
@@ -835,7 +852,7 @@ struct NotesView: View {
                     Spacer()
 
                     Button {
-                        copyNoteContent(note.content)
+                        copyNoteContent(note)
                     } label: {
                         Image("copy")
                             .renderingMode(.template)
@@ -845,17 +862,43 @@ struct NotesView: View {
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
-                    .disabled(note.trimmedContent.isEmpty)
-                    .opacity(note.trimmedContent.isEmpty ? 0.45 : 1)
+                    .disabled(note.trimmedContent.isEmpty && note.checklistItems.isEmpty)
+                    .opacity((note.trimmedContent.isEmpty && note.checklistItems.isEmpty) ? 0.45 : 1)
                     .accessibilityLabel("Copy content")
                 }
 
-                Text(note.trimmedContent.isEmpty ? "Empty note" : note.content)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(.white)
-                    .lineSpacing(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(minHeight: 170, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 12) {
+                    if note.trimmedContent.isEmpty && note.checklistItems.isEmpty {
+                        Text("Empty note")
+                            .font(NoteFontOption.option(for: note.fontID).font(size: CGFloat(note.resolvedFontSize)))
+                            .foregroundStyle(.white.opacity(0.78))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        if !note.trimmedContent.isEmpty {
+                            Text(note.content)
+                                .font(NoteFontOption.option(for: note.fontID).font(size: CGFloat(note.resolvedFontSize)))
+                                .foregroundStyle(.white)
+                                .lineSpacing(3)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if !note.checklistItems.isEmpty {
+                            NoteChecklistInteractiveDisplay(
+                                items: note.checklistItems,
+                                font: NoteFontOption.option(for: note.fontID),
+                                textColor: .white,
+                                circleSize: 22,
+                                textSize: CGFloat(note.resolvedFontSize),
+                                rowSpacing: 9,
+                                onToggle: { item in
+                                    toggleChecklistItem(item, in: note)
+                                }
+                            )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 170, alignment: .topLeading)
             }
             .padding(18)
             .background(
@@ -1045,9 +1088,18 @@ struct NotesView: View {
                     GlassTextEditor(
                         placeholder: "Write anything...",
                         text: $draftContent,
-                        minHeight: 240
+                        minHeight: 210,
+                        font: draftFontOption.font(size: draftFontSizeValue)
                     )
+                    .id("note-editor-\(draftFontID)-\(Int(draftFontSize))")
                     .focused($isEditorFocused)
+
+                    NoteChecklistEditor(
+                        items: $draftChecklistItems,
+                        font: draftFontOption,
+                        fontSize: draftFontSizeValue
+                    )
+                    .id("note-checklist-editor-\(draftFontID)-\(Int(draftFontSize))")
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Sticky Note Color")
@@ -1075,6 +1127,17 @@ struct NotesView: View {
                         }
                     }
                 }
+            }
+
+            GlassCardNote {
+                NoteFontPicker(selectedFontID: $draftFontID)
+            }
+
+            GlassCardNote {
+                NoteFontSizeControl(
+                    fontSize: $draftFontSize,
+                    font: draftFontOption
+                )
             }
 
             GlassCardNote {
@@ -1483,6 +1546,9 @@ struct NotesView: View {
         let note = Note(
             content: "",
             colorHex: "#6B4CDE",
+            checklistItemsJSON: "",
+            fontID: NoteFontOption.system.rawValue,
+            fontSize: 15,
             label: "",
             label2: "",
             tabName: selectedTab.isEmpty ? (notesTabs.first ?? "All Notes") : selectedTab,
@@ -1494,6 +1560,9 @@ struct NotesView: View {
         modelContext.insert(note)
         selectedNote = note
         draftContent = ""
+        draftChecklistItems = []
+        draftFontID = note.fontID
+        draftFontSize = note.resolvedFontSize
         draftLabel1 = note.label
         draftLabel2 = note.label2
         draftColorHex = note.colorHex
@@ -1512,6 +1581,9 @@ struct NotesView: View {
         viewingNote = nil
         selectedNote = note
         draftContent = note.content
+        draftChecklistItems = note.checklistItems
+        draftFontID = note.fontID
+        draftFontSize = note.resolvedFontSize
         draftLabel1 = note.label
         draftLabel2 = note.label2
         draftColorHex = note.colorHex
@@ -1534,6 +1606,9 @@ struct NotesView: View {
         selectedNote = nil
         viewingNote = nil
         draftContent = ""
+        draftChecklistItems = []
+        draftFontID = NoteFontOption.system.rawValue
+        draftFontSize = 15
         draftLabel1 = ""
         draftLabel2 = ""
         draftColorHex = "#6B4CDE"
@@ -1545,6 +1620,18 @@ struct NotesView: View {
 
     private func saveChanges(for note: Note) {
         note.content = draftContent
+        note.checklistItems = draftChecklistItems
+            .map { item in
+                NoteChecklistItem(
+                    id: item.id,
+                    title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
+                    isCompleted: item.isCompleted,
+                    createdAt: item.createdAt
+                )
+            }
+            .filter { !$0.title.isEmpty }
+        note.fontID = draftFontID
+        note.fontSize = min(Note.maximumFontSize, max(Note.minimumFontSize, draftFontSize))
         note.label = draftLabel1.trimmingCharacters(in: .whitespacesAndNewlines)
         note.label2 = draftLabel2.trimmingCharacters(in: .whitespacesAndNewlines)
         note.colorHex = draftColorHex
@@ -1585,6 +1672,20 @@ struct NotesView: View {
         do { try modelContext.save() } catch { print("Failed to toggle pin: \(error)") }
     }
 
+    private func toggleChecklistItem(_ item: NoteChecklistItem, in note: Note) {
+        var items = note.checklistItems
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[index].isCompleted.toggle()
+        note.checklistItems = items
+        note.touch()
+        do {
+            try modelContext.save()
+            LunixiaStickyNoteWidgetWriter.write(notes: notes, tabs: tabs)
+        } catch {
+            print("Failed to toggle checklist item: \(error)")
+        }
+    }
+
     private func delete(_ note: Note) {
         selectedNote = nil
         viewingNote = nil
@@ -1622,11 +1723,20 @@ struct NotesView: View {
         }
     }
 
-    private func copyNoteContent(_ text: String) {
-        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !content.isEmpty else { return }
+    private func copyNoteContent(_ note: Note) {
+        let content = note.trimmedContent
+        let checklistText = note.checklistItems
+            .map { item in
+                "\(item.isCompleted ? "[x]" : "[ ]") \(item.title)"
+            }
+            .joined(separator: "\n")
+        let exportText = [content, checklistText]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+        guard !exportText.isEmpty else { return }
 
-        UIPasteboard.general.string = text
+        UIPasteboard.general.string = exportText
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
         copiedBannerHideTask?.cancel()
@@ -1662,21 +1772,24 @@ private struct NoteStickyCard: View {
     let availableTabs: [String]
     @Binding var isCollapsed: Bool
     let action: () -> Void
+    let onToggleChecklistItem: (NoteChecklistItem) -> Void
     let onMoveToTab: (String) -> Void
     let onDelete: () -> Void
     
     private var cardHeight: CGFloat { note.isPinned && isCollapsed ? 96 : 190 }
     private var previewLineLimit: Int { note.isPinned && isCollapsed ? 3 : 8 }
+    private var cardFontSize: CGFloat {
+        min(max(CGFloat(note.resolvedFontSize) * 0.82, 11), 15)
+    }
     
     var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(stickyColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                    )
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(stickyColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
                 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top, spacing: 8) {
@@ -1714,35 +1827,70 @@ private struct NoteStickyCard: View {
                         .layoutPriority(0)
                     }
                     
-                    Text(previewText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.black.opacity(0.82))
-                        .lineSpacing(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .layoutPriority(1)
-                        .lineLimit(previewLineLimit)
-                    
-                    Spacer(minLength: 0)
-                    
-                    if !(note.isPinned && isCollapsed) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Created: \(shortDateTime(note.createdAt))")
-                                .font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.black.opacity(0.55))
-                            Text("Updated: \(shortDateTime(note.updatedAt))")
-                                .font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.black.opacity(0.55))
+                    VStack(alignment: .leading, spacing: 6) {
+                        if previewText == "Empty note" && displayedChecklistItems.isEmpty {
+                            Text(previewText)
+                                .font(NoteFontOption.option(for: note.fontID).font(size: cardFontSize, weight: .medium))
+                                .foregroundStyle(Color.black.opacity(0.60))
+                                .lineLimit(2)
+                        } else {
+                            if !note.trimmedContent.isEmpty {
+                                Text(note.content)
+                                    .font(NoteFontOption.option(for: note.fontID).font(size: cardFontSize, weight: .medium))
+                                    .foregroundStyle(Color.black.opacity(0.82))
+                                    .lineSpacing(2)
+                                    .lineLimit(cardTextLineLimit)
+                            }
+
+                            if !displayedChecklistItems.isEmpty {
+                                NoteChecklistInteractiveDisplay(
+                                    items: displayedChecklistItems,
+                                    font: NoteFontOption.option(for: note.fontID),
+                                    textColor: Color.black.opacity(0.82),
+                                    circleSize: 16,
+                                    textSize: max(10, cardFontSize - 1),
+                                    lineLimit: 1,
+                                    rowSpacing: 5,
+                                    onToggle: { item in
+                                        onToggleChecklistItem(item)
+                                    }
+                                )
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxHeight: cardPreviewMaxHeight, alignment: .topLeading)
+                    .clipped()
+                    .layoutPriority(1)
+
                 }
-                .padding(14)
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .frame(height: cardHeight, alignment: .top)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
+                .padding(.top, 14)
+                .padding(.horizontal, 14)
+                .padding(.bottom, note.isPinned && isCollapsed ? 14 : 46)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                if !(note.isPinned && isCollapsed) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Created: \(shortDateTime(note.createdAt))")
+                            .font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.black.opacity(0.55))
+                        Text("Updated: \(shortDateTime(note.updatedAt))")
+                            .font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.black.opacity(0.55))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
+                }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: cardHeight, alignment: .top)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .buttonStyle(.plain)
+        .gesture(
+            TapGesture().onEnded {
+                action()
+            },
+            including: .gesture
+        )
         .contextMenu {
             Menu("Move to Tab") {
                 ForEach(availableTabs, id: \.self) { tab in
@@ -1764,6 +1912,27 @@ private struct NoteStickyCard: View {
     private var previewText: String {
         let cleaned = note.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? "Empty note" : cleaned
+    }
+
+    private var displayedChecklistItems: [NoteChecklistItem] {
+        Array(note.checklistItems.prefix(checklistPreviewLimit))
+    }
+
+    private var checklistPreviewLimit: Int {
+        if note.isPinned && isCollapsed { return 1 }
+        if note.trimmedContent.isEmpty { return 3 }
+        return 2
+    }
+
+    private var cardTextLineLimit: Int {
+        if !displayedChecklistItems.isEmpty {
+            return note.isPinned && isCollapsed ? 1 : 3
+        }
+        return previewLineLimit
+    }
+
+    private var cardPreviewMaxHeight: CGFloat {
+        note.isPinned && isCollapsed ? 34 : 68
     }
 
     private var displayedBadges: [String] {

@@ -677,11 +677,13 @@ struct GlassTextEditor: View {
     let placeholder: String
     @Binding var text: String
     var minHeight: CGFloat = 100
+    var font: Font? = nil
     
     var body: some View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
                 Text(placeholder)
+                    .font(font)
                     .foregroundStyle(LColors.textSecondary.opacity(0.65))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -689,6 +691,7 @@ struct GlassTextEditor: View {
             }
             
             TextEditor(text: $text)
+                .font(font)
                 .foregroundStyle(LColors.textPrimary)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)

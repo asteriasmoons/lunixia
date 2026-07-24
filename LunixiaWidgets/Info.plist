@@ -7,5 +7,23 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>261 Pinky.otf</string>
+		<string>Beautiful Rainbow Font by Dani 7NTypes.otf</string>
+		<string>Childow Everyday.otf</string>
+		<string>Chunky Bear.otf</string>
+		<string>Fox Lollipop.otf</string>
+		<string>HachiMaruPop-Regular.ttf</string>
+		<string>Inlove.otf</string>
+		<string>Jelly Fox Highlight.otf</string>
+		<string>Live On The Moon.otf</string>
+		<string>Love Monday.otf</string>
+		<string>Mighty Fine Demibold.otf</string>
+		<string>Quirky Loving.otf</string>
+		<string>Sabrina Lovely.otf</string>
+		<string>Soul Dreams.otf</string>
+		<string>Sugar Donut Heart.otf</string>
+	</array>
 </dict>
 </plist>
