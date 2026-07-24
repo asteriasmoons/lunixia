@@ -599,79 +599,77 @@ struct NotesView: View {
     // MARK: - Tabs Section
     
     private var tabsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(notesTabs, id: \.self) { tab in
-                    Button {
-                        selectedTab = tab
-                        visibleCount = 6
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(tab)
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: LSpacing.buttonRadius)
-                                .fill(Color.white.opacity(selectedTab == tab ? 0.22 : 0.10))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: LSpacing.buttonRadius)
-                                        .stroke(Color.white.opacity(selectedTab == tab ? 0.24 : 0.16), lineWidth: 1)
-                                )
-                        )
+        FlowLayout(spacing: 10) {
+            ForEach(notesTabs, id: \.self) { tab in
+                Button {
+                    selectedTab = tab
+                    visibleCount = 6
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(tab)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
                     }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button {
-                            moveTabLeft(tab)
-                        } label: {
-                            Label("Move Left", image: "chevleft")
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: LSpacing.buttonRadius)
+                            .fill(Color.white.opacity(selectedTab == tab ? 0.22 : 0.10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: LSpacing.buttonRadius)
+                                    .stroke(Color.white.opacity(selectedTab == tab ? 0.24 : 0.16), lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        moveTabLeft(tab)
+                    } label: {
+                        Label("Move Left", image: "chevleft")
+                    }
+                    .disabled(tab == notesTabs.first)
+
+                    Button {
+                        moveTabRight(tab)
+                    } label: {
+                        Label("Move Right", image: "chevright")
+                    }
+                    .disabled(tab == notesTabs.last)
+
+                    Divider()
+
+                    Button {
+                        if let s = settings {
+                            s.notesDefaultTab = tab
+                            s.updatedAt = Date()
+                            try? modelContext.save()
                         }
-                        .disabled(tab == notesTabs.first)
+                    } label: {
+                        Label(notesDefaultTab == tab ? "Default Tab ✓" : "Set as Default", image: "starfill")
+                    }
 
-                        Button {
-                            moveTabRight(tab)
+                    Button {
+                        renamingTabName = tab
+                        renamedTabName = tab
+                        tabPopupMode = .rename
+                        showingTabPopup = true
+                    } label: {
+                        Label("Rename", image: "linespencil")
+                    }
+
+                    if tab != rootTabName || notesTabs.count > 1 {
+                        Button(role: .destructive) {
+                            tabPendingDeletion = tab
+                            showDeleteTabConfirmation = true
                         } label: {
-                            Label("Move Right", image: "chevright")
-                        }
-                        .disabled(tab == notesTabs.last)
-
-                        Divider()
-
-                        Button {
-                            if let s = settings {
-                                s.notesDefaultTab = tab
-                                s.updatedAt = Date()
-                                try? modelContext.save()
-                            }
-                        } label: {
-                            Label(notesDefaultTab == tab ? "Default Tab ✓" : "Set as Default", image: "starfill")
-                        }
-
-                        Button {
-                            renamingTabName = tab
-                            renamedTabName = tab
-                            tabPopupMode = .rename
-                            showingTabPopup = true
-                        } label: {
-                            Label("Rename", image: "linespencil")
-                        }
-
-                        if tab != rootTabName || notesTabs.count > 1 {
-                            Button(role: .destructive) {
-                                tabPendingDeletion = tab
-                                showDeleteTabConfirmation = true
-                            } label: {
-                                Label("Delete", image: "trash")
-                            }
+                            Label("Delete", image: "trash")
                         }
                     }
                 }
             }
-            .padding(.horizontal, LSpacing.pageHorizontal)
         }
+        .padding(.horizontal, LSpacing.pageHorizontal)
     }
     
     // MARK: - Notes Section
