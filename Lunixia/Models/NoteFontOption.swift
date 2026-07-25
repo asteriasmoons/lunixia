@@ -10,19 +10,19 @@ enum NoteFontOption: String, CaseIterable, Identifiable, Codable {
     case system
     case rounded
     case serif
-    case twoSixOnePinky
     case beautifulRainbow
+    case balistia
+    case cenila
     case childowEveryday
     case chunkyBear
+    case chubbyLines
     case foxLollipop
+    case handDrawn
     case hachiMaruPop
     case inLove
-    case jellyFoxHighlight
     case liveOnTheMoon
     case loveMonday
     case mightyFineDemibold
-    case quirkyLoving
-    case sabrinaLovely
     case soulDreams
     case sugarDonutHeart
 
@@ -33,19 +33,19 @@ enum NoteFontOption: String, CaseIterable, Identifiable, Codable {
         case .system: return "System"
         case .rounded: return "Rounded"
         case .serif: return "Serif"
-        case .twoSixOnePinky: return "261 Pinky"
         case .beautifulRainbow: return "Beautiful Rainbow"
+        case .balistia: return "Balistia"
+        case .cenila: return "Cenila"
         case .childowEveryday: return "Childow Everyday"
         case .chunkyBear: return "Chunky Bear"
+        case .chubbyLines: return "Chubby Lines"
         case .foxLollipop: return "Fox Lollipop"
+        case .handDrawn: return "Hand Drawn"
         case .hachiMaruPop: return "Hachi Maru Pop"
         case .inLove: return "Inlove"
-        case .jellyFoxHighlight: return "Jelly Fox Highlight"
         case .liveOnTheMoon: return "Live On The Moon"
         case .loveMonday: return "Love Monday"
         case .mightyFineDemibold: return "Mighty Fine Demibold"
-        case .quirkyLoving: return "Quirky Loving"
-        case .sabrinaLovely: return "Sabrina Lovely"
         case .soulDreams: return "Soul Dreams"
         case .sugarDonutHeart: return "Sugar Donut Heart"
         }
@@ -55,32 +55,32 @@ enum NoteFontOption: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .system, .rounded, .serif:
             return nil
-        case .twoSixOnePinky:
-            return "PinkyRegular"
         case .beautifulRainbow:
             return "BeautifulRainbow"
+        case .balistia:
+            return "Balistia-Regular"
+        case .cenila:
+            return "Cenila"
         case .childowEveryday:
             return "ChildowEveryday"
         case .chunkyBear:
             return "ChunkyBear"
+        case .chubbyLines:
+            return "ChubbyLines-Regular"
         case .foxLollipop:
             return "FoxLollipopRegular"
+        case .handDrawn:
+            return "HandDrawnRegular"
         case .hachiMaruPop:
             return "HachiMaruPop-Regular"
         case .inLove:
             return "InLoveRegular"
-        case .jellyFoxHighlight:
-            return "JellyFoxHighlight"
         case .liveOnTheMoon:
             return "LiveonTheMoon"
         case .loveMonday:
             return "LoveMonday"
         case .mightyFineDemibold:
             return "ZPMightyFineDemibold"
-        case .quirkyLoving:
-            return "QuirkyLoving"
-        case .sabrinaLovely:
-            return "SabrinaLovely"
         case .soulDreams:
             return "SoulDreams"
         case .sugarDonutHeart:
@@ -92,32 +92,32 @@ enum NoteFontOption: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .system, .rounded, .serif:
             return nil
-        case .twoSixOnePinky:
-            return "261 Pinky.otf"
         case .beautifulRainbow:
             return "Beautiful Rainbow Font by Dani 7NTypes.otf"
+        case .balistia:
+            return "Balistia.otf"
+        case .cenila:
+            return "Cenila.otf"
         case .childowEveryday:
             return "Childow Everyday.otf"
         case .chunkyBear:
             return "Chunky Bear.otf"
+        case .chubbyLines:
+            return "Chubby Lines.otf"
         case .foxLollipop:
             return "Fox Lollipop.otf"
+        case .handDrawn:
+            return "Hand Drawn.otf"
         case .hachiMaruPop:
             return "HachiMaruPop-Regular.ttf"
         case .inLove:
             return "Inlove.otf"
-        case .jellyFoxHighlight:
-            return "Jelly Fox Highlight.otf"
         case .liveOnTheMoon:
             return "Live On The Moon.otf"
         case .loveMonday:
             return "Love Monday.otf"
         case .mightyFineDemibold:
             return "Mighty Fine Demibold.otf"
-        case .quirkyLoving:
-            return "Quirky Loving.otf"
-        case .sabrinaLovely:
-            return "Sabrina Lovely.otf"
         case .soulDreams:
             return "Soul Dreams.otf"
         case .sugarDonutHeart:

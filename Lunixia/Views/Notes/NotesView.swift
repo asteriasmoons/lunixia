@@ -1641,7 +1641,12 @@ struct NotesView: View {
             note.updatedAt = draftDate
         }
 
-        do { try modelContext.save() } catch { print("Failed to save note: \(error)") }
+        do {
+            try modelContext.save()
+            LunixiaStickyNoteWidgetWriter.write(notes: notes, tabs: tabs)
+        } catch {
+            print("Failed to save note: \(error)")
+        }
         closeEditor()
     }
 

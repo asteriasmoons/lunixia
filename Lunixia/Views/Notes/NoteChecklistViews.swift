@@ -53,7 +53,7 @@ struct NoteChecklistDisplay: View {
 
                     Text(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Checklist item" : item.title)
                         .font(font.font(size: textSize))
-                        .foregroundStyle(textColor)
+                        .foregroundStyle(item.isCompleted ? textColor.opacity(0.5) : textColor)
                         .strikethrough(item.isCompleted, color: textColor.opacity(0.72))
                         .lineSpacing(2)
                         .lineLimit(lineLimit)
@@ -89,7 +89,7 @@ struct NoteChecklistInteractiveDisplay: View {
 
                     Text(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Checklist item" : item.title)
                         .font(font.font(size: textSize))
-                        .foregroundStyle(textColor)
+                        .foregroundStyle(item.isCompleted ? textColor.opacity(0.5) : textColor)
                         .strikethrough(item.isCompleted, color: textColor.opacity(0.72))
                         .lineSpacing(2)
                         .lineLimit(lineLimit)

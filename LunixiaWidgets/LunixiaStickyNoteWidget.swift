@@ -412,19 +412,19 @@ private enum StickyNoteWidgetFontOption: String {
     case system
     case rounded
     case serif
-    case twoSixOnePinky
     case beautifulRainbow
+    case balistia
+    case cenila
     case childowEveryday
     case chunkyBear
+    case chubbyLines
     case foxLollipop
+    case handDrawn
     case hachiMaruPop
     case inLove
-    case jellyFoxHighlight
     case liveOnTheMoon
     case loveMonday
     case mightyFineDemibold
-    case quirkyLoving
-    case sabrinaLovely
     case soulDreams
     case sugarDonutHeart
 
@@ -432,32 +432,32 @@ private enum StickyNoteWidgetFontOption: String {
         switch self {
         case .system, .rounded, .serif:
             return nil
-        case .twoSixOnePinky:
-            return "PinkyRegular"
         case .beautifulRainbow:
             return "BeautifulRainbow"
+        case .balistia:
+            return "Balistia-Regular"
+        case .cenila:
+            return "Cenila"
         case .childowEveryday:
             return "ChildowEveryday"
         case .chunkyBear:
             return "ChunkyBear"
+        case .chubbyLines:
+            return "ChubbyLines-Regular"
         case .foxLollipop:
             return "FoxLollipopRegular"
+        case .handDrawn:
+            return "HandDrawnRegular"
         case .hachiMaruPop:
             return "HachiMaruPop-Regular"
         case .inLove:
             return "InLoveRegular"
-        case .jellyFoxHighlight:
-            return "JellyFoxHighlight"
         case .liveOnTheMoon:
             return "LiveonTheMoon"
         case .loveMonday:
             return "LoveMonday"
         case .mightyFineDemibold:
             return "ZPMightyFineDemibold"
-        case .quirkyLoving:
-            return "QuirkyLoving"
-        case .sabrinaLovely:
-            return "SabrinaLovely"
         case .soulDreams:
             return "SoulDreams"
         case .sugarDonutHeart:
@@ -469,32 +469,32 @@ private enum StickyNoteWidgetFontOption: String {
         switch self {
         case .system, .rounded, .serif:
             return nil
-        case .twoSixOnePinky:
-            return "261 Pinky.otf"
         case .beautifulRainbow:
             return "Beautiful Rainbow Font by Dani 7NTypes.otf"
+        case .balistia:
+            return "Balistia.otf"
+        case .cenila:
+            return "Cenila.otf"
         case .childowEveryday:
             return "Childow Everyday.otf"
         case .chunkyBear:
             return "Chunky Bear.otf"
+        case .chubbyLines:
+            return "Chubby Lines.otf"
         case .foxLollipop:
             return "Fox Lollipop.otf"
+        case .handDrawn:
+            return "Hand Drawn.otf"
         case .hachiMaruPop:
             return "HachiMaruPop-Regular.ttf"
         case .inLove:
             return "Inlove.otf"
-        case .jellyFoxHighlight:
-            return "Jelly Fox Highlight.otf"
         case .liveOnTheMoon:
             return "Live On The Moon.otf"
         case .loveMonday:
             return "Love Monday.otf"
         case .mightyFineDemibold:
             return "Mighty Fine Demibold.otf"
-        case .quirkyLoving:
-            return "Quirky Loving.otf"
-        case .sabrinaLovely:
-            return "Sabrina Lovely.otf"
         case .soulDreams:
             return "Soul Dreams.otf"
         case .sugarDonutHeart:
@@ -518,9 +518,35 @@ private enum StickyNoteWidgetFontOption: String {
             return .system(size: size, weight: weight, design: .serif)
         default:
             if let postScriptName {
-                return .custom(postScriptName, size: size).weight(weight)
+                return .custom(postScriptName, size: size)
             }
             return .system(size: size, weight: weight)
+        }
+    }
+
+    func uiFont(size: CGFloat) -> UIFont {
+        StickyNoteWidgetFontRegistrar.registerFontsIfNeeded()
+
+        switch self {
+        case .system:
+            return .systemFont(ofSize: size)
+        case .rounded:
+            if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor
+                .withDesign(.rounded) {
+                return UIFont(descriptor: descriptor, size: size)
+            }
+            return .systemFont(ofSize: size)
+        case .serif:
+            if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor
+                .withDesign(.serif) {
+                return UIFont(descriptor: descriptor, size: size)
+            }
+            return .systemFont(ofSize: size)
+        default:
+            if let postScriptName, let font = UIFont(name: postScriptName, size: size) {
+                return font
+            }
+            return .systemFont(ofSize: size)
         }
     }
 }
@@ -533,19 +559,19 @@ private enum StickyNoteWidgetFontRegistrar {
         didRegister = true
 
         for option in [
-            StickyNoteWidgetFontOption.twoSixOnePinky,
-            .beautifulRainbow,
+            StickyNoteWidgetFontOption.beautifulRainbow,
+            .balistia,
+            .cenila,
             StickyNoteWidgetFontOption.childowEveryday,
             .chunkyBear,
+            .chubbyLines,
             .foxLollipop,
+            .handDrawn,
             .hachiMaruPop,
             .inLove,
-            .jellyFoxHighlight,
             .liveOnTheMoon,
             .loveMonday,
             .mightyFineDemibold,
-            .quirkyLoving,
-            .sabrinaLovely,
             .soulDreams,
             .sugarDonutHeart
         ] {
@@ -782,14 +808,13 @@ struct LunixiaStickyNoteWidgetView: View {
                     .buttonStyle(.plain)
                     .padding(.top, 1)
 
-                    Text(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Checklist item" : item.title)
-                        .font(fontOption.font(size: fontSize))
-                        .foregroundStyle(.white)
-                        .strikethrough(item.isCompleted, color: Color.white.opacity(0.72))
-                        .lineLimit(itemLineLimit)
-                        .multilineTextAlignment(.leading)
-                        .minimumScaleFactor(0.78)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    StickyNoteWidgetChecklistText(
+                        title: item.title,
+                        isCompleted: item.isCompleted,
+                        fontOption: fontOption,
+                        fontSize: fontSize,
+                        lineLimit: itemLineLimit
+                    )
                 }
             }
         }
@@ -894,6 +919,46 @@ struct LunixiaStickyNoteWidgetView: View {
         case .systemMedium: return 2
         default: return 3
         }
+    }
+}
+
+private struct StickyNoteWidgetChecklistText: View {
+    let title: String
+    let isCompleted: Bool
+    let fontOption: StickyNoteWidgetFontOption
+    let fontSize: CGFloat
+    let lineLimit: Int
+
+    private var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Checklist item" : trimmed
+    }
+
+    var body: some View {
+        Text(displayTitle)
+            .font(fontOption.font(size: fontSize))
+            .foregroundStyle(.white.opacity(isCompleted ? 0.5 : 1.0))
+            .lineLimit(lineLimit)
+            .multilineTextAlignment(.leading)
+            .minimumScaleFactor(0.78)
+            .overlay {
+                if isCompleted {
+                    GeometryReader { geo in
+                        let lineCount = geo.size.height < fontSize * 2.0
+                            ? 1
+                            : max(1, min(lineLimit, Int(round(geo.size.height / (fontSize * 1.4)))))
+                        let lineSpacing = geo.size.height / CGFloat(lineCount)
+
+                        ForEach(0..<lineCount, id: \.self) { i in
+                            Rectangle()
+                                .fill(Color.white.opacity(0.6))
+                                .frame(height: 1.5)
+                                .offset(y: lineSpacing * CGFloat(i) + lineSpacing * 0.48)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
